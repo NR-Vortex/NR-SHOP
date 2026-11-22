@@ -41,7 +41,7 @@ def main_menu_keyboard():
 
     # سفارش های من
     if is_feature_enabled("orders"):
-        buttons.append([InlineKeyboardButton(text="📦 سفارش‌های من", callback_data="shop:orders")])
+        buttons.append([InlineKeyboardButton(text="📦 محصولات من", callback_data="shop:orders")])
 
     if is_feature_enabled("vps"):
 
@@ -136,7 +136,7 @@ def ai_services_keyboard():
     ])
 
 
-def ai_orders_keyboard(orders):
+def orders_keyboard(orders, page=0, has_next=False):
     status_icons = {
         "awaiting_payment": "🟡",
         "awaiting_discount": "🟡",
@@ -147,23 +147,36 @@ def ai_orders_keyboard(orders):
         "cancelled": "⚫",
     }
     rows = []
-    for order in orders:
+    for order, section in orders:
         icon = status_icons.get(order.status, "⚪")
         rows.append([InlineKeyboardButton(
-            text=f"{icon} {order.product_name} | {order.final_amount:,} تومان",
-            callback_data=f"ai:order:{order.id}",
+            text=f"{icon} {section} · {order.product_name[:52]} · {order.final_amount:,} تومان",
+            callback_data=f"shop:order:{order.id}:{page}",
         )])
-    rows.append([InlineKeyboardButton(text="🔙 بازگشت به منوی هوش مصنوعی", callback_data="ai:home")])
+    navigation = []
+    if page:
+        navigation.append(InlineKeyboardButton(text="قبلی", callback_data=f"shop:orders:{page-1}"))
+    if has_next:
+        navigation.append(InlineKeyboardButton(text="بعدی", callback_data=f"shop:orders:{page+1}"))
+    if navigation:
+        rows.append(navigation)
+    rows.append([InlineKeyboardButton(text="بازگشت به فروشگاه", callback_data="shop:home")])
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
-def ai_order_detail_keyboard(order_id: int):
-    return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="📋 دریافت اطلاعات حساب", callback_data=f"ai:account:{order_id}")],
-        [InlineKeyboardButton(text="🎧 پشتیبانی", callback_data="shop:support")],
-        [InlineKeyboardButton(text="🔙 بازگشت به سفارش‌ها", callback_data="shop:orders")],
-        [InlineKeyboardButton(text="🏠 بازگشت به منوی AI", callback_data="ai:home")],
-    ])
+def order_detail_keyboard(order, section, page, *, is_vpn=False):
+    rows = []
+    if order.status == "awaiting_discount":
+        rows.append([InlineKeyboardButton(text="ادامهٔ پرداخت", callback_data=f"checkout:skip:{order.order_number}")])
+    elif order.status == "awaiting_payment":
+        rows.append([InlineKeyboardButton(text="مشاهدهٔ اطلاعات پرداخت", callback_data=f"checkout:pay:{order.order_number}")])
+    elif order.status in {"paid","provisioning"} and is_vpn:
+        rows.append([InlineKeyboardButton(text="مشاهدهٔ سرویس VPN", callback_data=f"vpn:service:{order.id}")])
+    elif order.status == "paid" and section == "ai":
+        rows.append([InlineKeyboardButton(text="دریافت اطلاعات حساب", callback_data=f"ai:account:{order.id}")])
+    rows.append([InlineKeyboardButton(text="پشتیبانی", callback_data="support:menu")])
+    rows.append([InlineKeyboardButton(text="بازگشت به محصولات من", callback_data=f"shop:orders:{page}")])
+    return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
 def ai_account_delivery_keyboard(order_id: int):

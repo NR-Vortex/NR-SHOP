@@ -11,8 +11,8 @@ from modules.shop.keyboards import (
     ai_menu_keyboard,
     back_to_ai_keyboard,
     ai_services_keyboard,
-    ai_orders_keyboard,
-    ai_order_detail_keyboard,
+    orders_keyboard,
+    order_detail_keyboard,
     ai_tutorials_keyboard,
     ai_tutorial_detail_keyboard,
     ai_wallet_keyboard,
@@ -33,6 +33,7 @@ from modules.checkout.admin_review import get_admin_ids
 from modules.wallet.service import get_wallet, get_transactions
 from modules.checkout.states import CheckoutStates
 import re
+from html import escape
 
 
 router = Router(name="shop")
@@ -399,72 +400,66 @@ async def ai_wallet_preparation_handler(callback: CallbackQuery):
     await callback.answer("🚧 شارژ کیف پول در مرحله پرداخت کارت‌به‌کارت تکمیل می‌شود.", show_alert=True)
 
 
-# سفارش های من
+ORDER_SECTION_NAMES = {"ai": "هوش مصنوعی", "vpn": "VPN", "telegram": "تلگرام", "vps": "سرور مجازی"}
+ORDER_PAGE_SIZE = 12
+
+
+def customer_orders(user_id):
+    return (
+        select(Order, VPNOrderDetails.id.label("vpn_id"), Category.section)
+        .outerjoin(VPNOrderDetails, VPNOrderDetails.order_id == Order.id)
+        .outerjoin(Product, Product.id == Order.product_id)
+        .outerjoin(Category, Category.id == Product.category_id)
+        .where(Order.telegram_user_id == user_id)
+    )
+
+
+def order_section(section, vpn_id):
+    if vpn_id is not None:
+        return "vpn"
+    return section
+
+
 @router.callback_query(F.data == "shop:orders")
+@router.callback_query(F.data.regexp(r"^shop:orders:[0-9]{1,8}$"))
 async def orders_handler(callback: CallbackQuery):
-
     if not is_feature_enabled("orders"):
-
-        await callback.answer(
-            "🔴 بخش سفارش‌ها غیرفعال است.",
-            show_alert=True
-        )
-
+        await callback.answer("بخش سفارش‌ها غیرفعال است.", show_alert=True)
         return
-
+    page = int(callback.data.split(":")[2]) if callback.data.count(":") == 2 else 0
     async with async_session() as session:
-        result = await session.execute(
-            select(Order)
-            .outerjoin(VPNOrderDetails, VPNOrderDetails.order_id == Order.id)
-            .where(
-                Order.telegram_user_id == callback.from_user.id,
-                VPNOrderDetails.id.is_(None),
-            )
-            .order_by(Order.created_at.desc(), Order.id.desc())
-        )
-        orders = result.scalars().all()
-
+        query = customer_orders(callback.from_user.id).order_by(Order.created_at.desc(), Order.id.desc())
+        rows = (await session.execute(query.offset(page * ORDER_PAGE_SIZE).limit(ORDER_PAGE_SIZE+1))).all()
+    orders = [(order, ORDER_SECTION_NAMES.get(order_section(section,vpn_id),"سفارش")) for order,vpn_id,section in rows[:ORDER_PAGE_SIZE]]
     await callback.answer()
     if isinstance(callback.message, Message):
-        if not orders:
-            await callback.message.edit_text(
-                "📦 <b>سفارش‌های من</b>\n\n📭 هنوز سفارش AI ثبت نکرده‌اید.",
-                reply_markup=back_to_ai_keyboard(),
-            )
-        else:
-            await callback.message.edit_text(
-                "📦 <b>سفارش‌های من</b>\n\nسفارش موردنظر را انتخاب کنید:",
-                reply_markup=ai_orders_keyboard(orders),
-            )
-
-
-@router.callback_query(F.data.startswith("ai:order:"))
-async def ai_order_detail_handler(callback: CallbackQuery):
-    try:
-        order_id = int(callback.data.rsplit(":", 1)[-1])
-    except ValueError:
-        await callback.answer("سفارش نامعتبر است.", show_alert=True)
-        return
-    async with async_session() as session:
-        result = await session.execute(
-            select(Order)
-            .outerjoin(VPNOrderDetails, VPNOrderDetails.order_id == Order.id)
-            .where(
-                Order.id == order_id,
-                Order.telegram_user_id == callback.from_user.id,
-                VPNOrderDetails.id.is_(None),
-            )
+        message = "از فهرست همهٔ بخش‌ها، سفارش موردنظرت رو انتخاب کن." if orders else "سفارشی برای نمایش در این صفحه وجود نداره."
+        await callback.message.edit_text(
+            f"📦 <b>محصولات من</b>\n\n{message}",
+            reply_markup=orders_keyboard(orders,page,len(rows)>ORDER_PAGE_SIZE),
         )
-        order = result.scalar_one_or_none()
-    if not order:
-        await callback.answer("سفارش پیدا نشد.", show_alert=True)
-        return
+
+
+@router.callback_query(F.data.regexp(r"^shop:order:[0-9]{1,18}:[0-9]{1,8}$"))
+@router.callback_query(F.data.regexp(r"^ai:order:[0-9]{1,18}$"))
+async def order_detail(callback: CallbackQuery):
+    parts = callback.data.split(":")
+    page = int(parts[3]) if len(parts) == 4 else 0
+    async with async_session() as session:
+        row = (await session.execute(customer_orders(callback.from_user.id).where(Order.id==int(parts[2])))).first()
+        if not row:
+            await callback.answer("سفارش پیدا نشد.", show_alert=True)
+            return
+        order,vpn_id,category = row
+        section=order_section(category,vpn_id)
+        if section is None and await session.scalar(select(AIAccountDelivery.id).where(AIAccountDelivery.order_id==order.id)):
+            section="ai"
     labels = {
         "awaiting_payment": "🟡 در انتظار پرداخت",
         "awaiting_discount": "🟡 در انتظار پرداخت",
         "under_review": "🔵 در انتظار بررسی مدیر",
         "provisioning": "🟠 در حال آماده‌سازی",
-        "paid": "🟢 تکمیل‌شده",
+        "paid": "🟢 پرداخت تأیید شده",
         "rejected": "🔴 ردشده",
         "cancelled": "⚫ لغوشده",
     }
@@ -472,13 +467,14 @@ async def ai_order_detail_handler(callback: CallbackQuery):
     await callback.answer()
     if isinstance(callback.message, Message):
         await callback.message.edit_text(
-            "📦 <b>جزئیات سفارش</b>\n\n"
-            f"🔢 شماره سفارش: <code>{order.order_number}</code>\n"
-            f"📦 محصول: {order.product_name}\n"
-            f"💰 مبلغ پرداختی: {order.final_amount:,} تومان\n"
-            f"📅 تاریخ ثبت: {created}\n"
-            f"🟢 وضعیت: {labels.get(order.status, order.status)}",
-            reply_markup=ai_order_detail_keyboard(order.id),
+            "<b>جزئیات سفارش</b>\n\n"
+            f"شماره سفارش <code>{escape(order.order_number)}</code>\n"
+            f"بخش {ORDER_SECTION_NAMES.get(section,'فروشگاه')}\n"
+            f"محصول {escape(order.product_name)}\n"
+            f"مبلغ سفارش {order.final_amount:,} تومان\n"
+            f"تاریخ ثبت {created}\n"
+            f"وضعیت {labels.get(order.status,'نامشخص')}",
+            reply_markup=order_detail_keyboard(order,section,page,is_vpn=vpn_id is not None),
         )
 
 
