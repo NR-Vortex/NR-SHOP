@@ -66,7 +66,10 @@ async def serve(manager, child_id, owner, manager_name):
     child = Bot(token, session=AiohttpSession(proxy=settings.BOT_PROXY))
     from core.button_theme import style_keyboard
     child.session.middleware(style_keyboard)
-    dispatcher = Dispatcher()
+    from aiogram.fsm.storage.memory import SimpleEventIsolation
+    from core.message_manager import register_navigation
+    dispatcher = Dispatcher(events_isolation=SimpleEventIsolation())
+    register_navigation(dispatcher,child.session)
     if registered:
         from modules.admin.agency_services import register_service_commands
         register_service_commands(dispatcher,owner,child_id)

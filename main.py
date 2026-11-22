@@ -5,6 +5,8 @@ from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.client.session.aiohttp import AiohttpSession
 from aiogram.enums import ParseMode
+from aiogram.fsm.storage.memory import SimpleEventIsolation
+from core.message_manager import register_navigation
 
 from core.config import settings
 from core.logging_config import setup_logging
@@ -36,7 +38,8 @@ async def main():
         )
     )
 
-    dp = Dispatcher()
+    dp = Dispatcher(events_isolation=SimpleEventIsolation())
+    register_navigation(dp,session)
 
     # فعال سازی عضویت اجباری
     dp.message.outer_middleware(

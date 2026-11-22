@@ -3,24 +3,49 @@ from urllib.parse import urljoin
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
 
 
+ADMIN_GROUPS = {
+    "shop": ("کاتالوگ و فروش", [
+        (("هوش مصنوعی", "admin:section:ai"), ("سرویس VPN", "admin:vpn")),
+        (("تخفیف و هدیه", "admin:section:gifts"), ("گزارش‌ها", "admin:section:reports")),
+    ]),
+    "agency": ("نمایندگی", [
+        (("مدیریت نمایندگان", "admin:section:representatives"),),
+        (("پنل نمایندگی", "admin:section:agency_panel"), ("ربات نمایندگی", "admin:section:agency_bot")),
+    ]),
+    "content": ("محتوا و ارتباطات", [
+        (("پیام همگانی", "admin:section:broadcast"), ("تبلیغات و عضویت", "admin:section:ads")),
+        (("متن‌های ربات", "admin:section:texts"), ("راهنماها", "admin:section:guides")),
+    ]),
+    "system": ("تنظیمات و نگهداری", [
+        (("تنظیمات ربات", "admin:section:settings"), ("دیتابیس و بکاپ", "admin:section:database")),
+        (("به‌روزرسانی", "updates:menu"),),
+    ]),
+}
+
+
+def admin_buttons(rows):
+    return [[InlineKeyboardButton(text=label, callback_data=action) for label,action in row] for row in rows]
+
+
 def admin_dashboard_keyboard():
-    rows = [
-        (("👥 کاربران", "admin:section:users"), ("📊 گزارش‌ها", "admin:section:reports")),
-        (("🤖 بخش AI", "admin:section:ai"), ("🌐 بخش VPN", "admin:vpn")),
-        (("👑 پنل نمایندگی", "admin:section:agency_panel"), ("🤖 ربات نمایندگی", "admin:section:agency_bot")),
-        (("💰 بخش مالی", "admin:section:finance"), ("🎧 پشتیبانی", "support:admin:menu")),
-        (("🎁 هدایا", "admin:section:gifts"), ("📚 راهنما", "admin:section:guides")),
-        (("📢 پیام همگانی", "admin:section:broadcast"), ("📝 مدیریت متن‌ها", "admin:section:texts")),
-        (("🏢 مدیریت نمایندگان", "admin:section:representatives"), ("🗄 دیتابیس", "admin:section:database")),
-        (("📣 تبلیغات", "admin:section:ads"), ("⚙️ تنظیمات ربات", "admin:section:settings")),
-        (("⬆️ به‌روزرسانی", "updates:menu"),),
-        (("🔙 بازگشت به منوی اصلی", "shop:home"),),
-    ]
-    keyboard = [[InlineKeyboardButton(text=t, callback_data=c) for t, c in row] for row in rows]
+    keyboard = admin_buttons([
+        (("💳 رسیدهای پرداخت", "admin:finance:payments"), ("📊 گزارش فروش", "admin:reports:sales")),
+        (("👥 کاربران", "admin:section:users"), ("🎧 پشتیبانی", "support:admin:menu")),
+        (("💰 امور مالی", "admin:section:finance"), ("🛍 کاتالوگ و فروش", "admin:hub:shop")),
+        (("🏢 نمایندگی", "admin:hub:agency"), ("📣 محتوا و ارتباطات", "admin:hub:content")),
+        (("⚙️ تنظیمات و نگهداری", "admin:hub:system"),),
+        (("↩️ بازگشت به فروشگاه", "shop:home"),),
+    ])
     url = os.getenv("MINIAPP_URL","").strip()
     if url.startswith("https://"):
-        keyboard.insert(0,[InlineKeyboardButton(text="پنل مدیریت مینی‌اپ",web_app=WebAppInfo(url=urljoin(url,"admin.html")))])
+        keyboard.insert(0,[InlineKeyboardButton(text="🖥 باز کردن مینی‌اپ مدیریت",web_app=WebAppInfo(url=urljoin(url,"admin.html")))])
     return InlineKeyboardMarkup(inline_keyboard=keyboard)
+
+
+def admin_group_keyboard(group):
+    _, rows = ADMIN_GROUPS[group]
+    return InlineKeyboardMarkup(inline_keyboard=admin_buttons([*rows, (("↩️ داشبورد مدیریت", "admin:dashboard"),)]))
+
 
 def admin_users_keyboard():
     return InlineKeyboardMarkup(inline_keyboard=[

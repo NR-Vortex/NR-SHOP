@@ -10,7 +10,7 @@ from sqlalchemy import func, or_, select
 from database.models import Category, Order, Product, Referral, Wallet
 from database.session import async_session
 from modules.checkout.admin_review import is_admin
-from modules.admin.keyboards import admin_dashboard_keyboard, admin_users_keyboard
+from modules.admin.keyboards import ADMIN_GROUPS, admin_dashboard_keyboard, admin_group_keyboard, admin_users_keyboard
 from modules.admin.keyboards import admin_reports_keyboard
 from datetime import datetime, timedelta, timezone
 from modules.wallet.service import credit_wallet, debit_wallet
@@ -44,6 +44,19 @@ async def dashboard(callback: CallbackQuery, state: FSMContext):
     await state.clear()
     await callback.answer()
     if isinstance(callback.message, Message): await callback.message.edit_text("⚙️ <b>داشبورد مدیریت NR SHOP</b>\n\nبرای مدیریت فروشگاه، یکی از بخش‌ها را انتخاب کن.", reply_markup=admin_dashboard_keyboard())
+
+@router.callback_query(F.data.in_({f"admin:hub:{group}" for group in ADMIN_GROUPS}))
+async def admin_group(callback: CallbackQuery, state: FSMContext):
+    if not is_admin(callback.from_user.id):
+        await callback.answer("دسترسی غیرمجاز", show_alert=True)
+        return
+    await state.clear()
+    await callback.answer()
+    group = callback.data.rsplit(":", 1)[-1]
+    title, _ = ADMIN_GROUPS[group]
+    if isinstance(callback.message, Message):
+        await callback.message.edit_text(f"<b>{title}</b>", reply_markup=admin_group_keyboard(group))
+
 
 @router.callback_query(F.data == "admin:section:users")
 async def users_menu(callback: CallbackQuery):
