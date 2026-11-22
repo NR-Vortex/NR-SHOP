@@ -1,0 +1,1 @@
+"""Shared NR SHOP wallet."""
