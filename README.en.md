@@ -12,14 +12,14 @@ A self-hosted Telegram shop for VPN subscriptions and digital products, with a c
 
 ## Install on Linux
 
-Install Docker Engine with Compose v2, curl, and OpenSSL. Keep your BotFather token and numeric Telegram admin ID ready.
+Install Docker Engine with Compose v2, curl, OpenSSL, and Python 3. Keep your BotFather token and numeric Telegram admin ID ready.
 
 ```bash
 curl -fLo nr-shop-install.sh https://raw.githubusercontent.com/NR-Vortex/NR-SHOP/main/install.sh
 bash nr-shop-install.sh
 ```
 
-The installer generates secrets locally, runs database migrations and launches the services. Enter a DNS name pointing to the server to enable the public Mini App. Leave it blank for a bot-only setup.
+The installer validates your token and shows your bot link. Start that bot in private, then enter your personal numeric chat ID to become its administrator. The installer generates secrets locally, runs database migrations and launches the services. Enter a DNS name pointing to the server to enable the public Mini App. Leave it blank for a bot-only setup.
 
 | Port | Purpose |
 | --- | --- |
