@@ -28,6 +28,7 @@ class Product(Base):
 
     __table_args__ = (
 
+        CheckConstraint("archived_at IS NULL OR NOT is_active", name="archived_product_is_inactive"),
         CheckConstraint(
             "price >= 0",
             name="price_non_negative"
@@ -108,6 +109,8 @@ class Product(Base):
     account_type: Mapped[str] = mapped_column(
         String(16), default="shared", server_default="shared", nullable=False
     )
+
+    archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     is_active: Mapped[bool] = mapped_column(
         Boolean,

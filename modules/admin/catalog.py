@@ -25,11 +25,13 @@ class Form(StatesGroup):
     representative = State()
 
 
-def records(kind):
+def records(kind, *, archived=False):
     model = MODELS[kind]
     query = select(model)
     if model is not Category:
         query = query.join(Category, model.category_id == Category.id)
+    if kind=="products":
+        query=query.where(Product.archived_at.is_not(None) if archived else Product.archived_at.is_(None))
     return query.where(Category.section == "ai")
 
 
@@ -47,9 +49,49 @@ async def listing(callback, state):
         entries.append(("قبلی", f"cat:list:{kind}:{page-1}"))
     if len(rows) > 12:
         entries.append(("بعدی", f"cat:list:{kind}:{page+1}"))
-    entries.extend([("افزودن", f"cat:edit:{kind}:0"), ("بازگشت", "admin:section:ai")])
+    entries.append(("افزودن", f"cat:edit:{kind}:0"))
+    if kind=="products":
+        entries.append(("آرشیو محصولات","cat:archive:0"))
+    entries.append(("بازگشت","admin:section:ai"))
     await callback.answer()
-    await callback.message.edit_text(TITLES[kind] + " · برای ویرایش یک مورد را انتخاب کنید.", reply_markup=buttons(entries))
+    title=TITLES[kind] + (" · برای ویرایش یک مورد را انتخاب کنید." if rows else " · هنوز موردی ثبت نشده است.")
+    await callback.message.edit_text(title, reply_markup=buttons(entries))
+
+
+@router.callback_query(F.data.regexp(r"^cat:archive:[0-9]{1,8}$"))
+async def archive_list(callback,state):
+    await state.clear()
+    page=int(callback.data.rsplit(":",1)[1])
+    async with async_session() as session:
+        rows=(await session.scalars(records("products",archived=True).order_by(Product.id)
+            .offset(page*12).limit(13))).all()
+    entries=[(f"بازگردانی · {item.name[:55]}",f"cat:restore:{item.id}") for item in rows[:12]]
+    if page:
+        entries.append(("قبلی",f"cat:archive:{page-1}"))
+    if len(rows)>12:
+        entries.append(("بعدی",f"cat:archive:{page+1}"))
+    entries.append(("بازگشت به محصولات","admin:ai:products"))
+    await callback.answer()
+    await callback.message.edit_text("آرشیو محصولات AI" if rows else "آرشیو خالی است.",reply_markup=buttons(entries))
+
+
+@router.callback_query(F.data.regexp(r"^cat:restore:[0-9]{1,10}$"))
+async def restore_product(callback,state):
+    await state.clear()
+    product_id=int(callback.data.rsplit(":",1)[1])
+    if product_id>2**31-1:
+        await callback.answer("محصول پیدا نشد.",show_alert=True)
+        return
+    async with async_session.begin() as session:
+        product=await session.scalar(records("products",archived=True).where(Product.id==product_id).with_for_update(of=Product))
+        if product is None:
+            await callback.answer("محصول آرشیوشده پیدا نشد.",show_alert=True)
+            return
+        product.archived_at=None
+    await callback.answer("محصول در حالت غیرفعال به فهرست برگشت.")
+    await callback.message.edit_text("محصول به فهرست برگشت. برای فروش دوباره، وضعیتش را از همان فهرست فعال کن.",
+        reply_markup=buttons([("محصولات","admin:ai:products"),("آرشیو","cat:archive:0")]))
+
 
 
 FIELDS = {
