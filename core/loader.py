@@ -14,6 +14,7 @@ from modules.support.router import router as support_router
 from modules.vpn.router import router as vpn_router
 from modules.vpn.panel.admin.router import router as vpn_panel_admin_router
 from modules.referral.router import router as referral_router
+from modules.admin.updates import router as updates_router
 from modules.admin.reseller_panel import router as reseller_panel_router
 from modules.admin.agency_setup import router as agency_setup_router
 from modules.admin.agency_bots import router as agency_bots_router
@@ -49,6 +50,7 @@ def register_routers(dp: Dispatcher):
     dp.include_router(agency_bots_router)
     dp.include_router(admin_catalog_router)
     dp.include_router(admin_operations_router)
+    dp.include_router(updates_router)
     dp.include_router(admin_dashboard_router)
 
     dp.include_router(shop_router)

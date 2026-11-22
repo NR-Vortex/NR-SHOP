@@ -38,9 +38,9 @@ async def request_receipt(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
     if isinstance(callback.message, Message):
         await callback.message.answer(
-            "📸 <b>ارسال رسید پرداخت NR SHOP</b>\n\n"
-            "لطفاً تصویر رسید یا فایل PDF پرداخت را ارسال کنید.\n\n"
-            "برای انصراف /cancel را ارسال کنید.",
+            "📸 <b>رسید پرداخت</b>\n\n"
+            "عکس واضح رسید یا فایل PDF پرداخت رو بفرست.\n\n"
+            "برای لغو، /cancel رو بفرست.",
             reply_markup=receipt_request_keyboard(order_number),
         )
 
@@ -64,9 +64,9 @@ async def process_receipt(message: Message, state: FSMContext, file_id: str, rec
         await message.answer("خطا در ثبت رسید. لطفاً دوباره تلاش کنید."); return
     await state.clear()
     await message.answer(
-        f"✅ <b>رسید شما دریافت شد.</b>\n\n"
+        f"✅ <b>رسید ثبت شد</b>\n\n"
         f"🧾 شماره سفارش: <code>{order.order_number}</code>\n\n"
-        "📨 سفارش برای بررسی مدیر ارسال شد."
+        "📨 رسید در صف بررسیه. وضعیت رو از «سفارش‌های من» پیگیری کن."
     )
 
 

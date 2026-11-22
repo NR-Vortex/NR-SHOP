@@ -1,5 +1,6 @@
 *
 !requirements.txt
+!VERSION
 !main.py
 !config.py
 !alembic.ini

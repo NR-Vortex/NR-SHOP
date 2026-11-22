@@ -1,48 +1,16 @@
-from core.admin_settings import content_prefix
 from html import escape
-
-from core.features import is_feature_enabled
-
-
-SERVICE_FEATURES = [
-    "ai",
-    "vpn",
-    "telegram",
-    "vps",
-]
-
-
-def get_active_services_count():
-
-    return sum(
-        is_feature_enabled(feature)
-        for feature in SERVICE_FEATURES
-    )
+from core.admin_settings import content_prefix
 
 
 def build_welcome_message(full_name: str):
-
-    name = escape(full_name or "دوست عزیز")
-
-    active_count = get_active_services_count()
-
-    return content_prefix("texts:welcome") + f"""
-💠 سلام <b>{name}</b> عزیز
-
-به ربات <b>NR SHOP</b> خوش آمدید.
-
-🛡️ سرویس فعال: <b>{active_count}</b> عدد
-
-✨ با ما تجربه خرید متفاوتی داشته باشید.
-    """
+    name = escape(full_name or 'همراه NR SHOP')
+    return content_prefix('texts:welcome') + (
+        f'سلام <b>{name}</b>، به <b>NR SHOP</b> خوش اومدی.\n\n'
+        'از منوی پایین سرویس‌ت رو انتخاب کن یا سفارش‌هات رو پیگیری کن.'
+    )
 
 
-JOIN_MESSAGE = """
-1️⃣ لطفا با استفاده از گزینه
-(عضویت در کانال NR SHOP👑)
-در کانال ما عضو بشید ✔️
-
-2️⃣ بعد با استفاده از گزینه
-(تایید عضویت ✅)
-عضویت خودتون رو تایید کنید 🙏
-"""
+JOIN_MESSAGE = (
+    'برای ورود به فروشگاه، در کانال‌های زیر عضو شو.\n\n'
+    'بعد «بررسی عضویت» رو بزن تا وارد فروشگاه بشی.'
+)

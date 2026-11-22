@@ -1,5 +1,11 @@
 # NR SHOP · Telegram Store & Reseller Platform
 
+[![Release](https://img.shields.io/github/v/release/NR-Vortex/NR-SHOP)](https://github.com/NR-Vortex/NR-SHOP/releases/latest)
+[![Docker build](https://github.com/NR-Vortex/NR-SHOP/actions/workflows/build.yml/badge.svg)](https://github.com/NR-Vortex/NR-SHOP/actions/workflows/build.yml)
+[![Telegram](https://img.shields.io/badge/Platform-Telegram-229ED9)](https://core.telegram.org/bots/webapps)
+
+[Direct installer](https://raw.githubusercontent.com/NR-Vortex/NR-SHOP/main/install.sh) · [Releases](https://github.com/NR-Vortex/NR-SHOP/releases) · [Feature requests and issues](https://github.com/NR-Vortex/NR-SHOP/issues/new)
+
 [راهنمای فارسی](README.md)
 
 A self-hosted Telegram shop for VPN subscriptions and digital products, with a central 3x-ui server, a reseller quota dashboard and a Persian RTL Mini App.
@@ -37,3 +43,21 @@ docker compose -f compose.production.yaml --profile https up -d
 ```
 
 Keep your `.env` and database backups private. Restoring encrypted credentials requires the original encryption keys.
+
+## Administrator-approved updates
+
+Admins receive a Telegram notice for each new stable release. Open the GitHub notes or confirm **Install on this server**. The **Updates** menu shows the installed version and last request status.
+
+To enable the host service after installation, run:
+
+```bash
+bash scripts/enable-updates.sh
+```
+
+Use the non-root Docker-enabled installation account with a working systemd user session. Enable lingering for this account if it must keep running after SSH logout. Older installations require a one-time manual upgrade. Preserve your existing .env and volumes.
+
+The host worker resolves the stable release to a Git commit, backs up PostgreSQL and app settings to .update-backups, builds the image, and runs migrations before restarting the bot and Mini App API.
+
+## Contributing and support
+
+Star the project, open an issue with your version and reproduction steps, or submit a pull request. Remove credentials and customer details from reports.

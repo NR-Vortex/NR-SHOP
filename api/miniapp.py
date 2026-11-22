@@ -1,8 +1,7 @@
 """Run with python -m api.miniapp behind the public HTTPS endpoint."""
 import os
 import time
-from datetime import os
-import timezone
+from datetime import timezone
 from pathlib import Path
 
 from aiohttp import web

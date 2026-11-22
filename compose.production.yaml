@@ -1,5 +1,5 @@
 x-app: &app
-  image: nr-shop:local
+  image: nr-shop:${COMPOSE_PROJECT_NAME:-nr-shop}-local
   build: .
   env_file: .env
   environment:
@@ -32,6 +32,14 @@ services:
         condition: service_healthy
   bot:
     <<: *app
+    environment:
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      NR_SHOP_DATA_DIR: /data
+      NR_SHOP_UPDATE_DIR: /updates
+    volumes:
+      - app_data:/data
+      - ./.updates:/updates
     command: ["python", "main.py"]
     restart: unless-stopped
     depends_on:
@@ -46,6 +54,10 @@ services:
       DB_PORT: "5432"
       NR_SHOP_DATA_DIR: /data
       MINIAPP_BIND: 0.0.0.0
+      NR_SHOP_UPDATE_DIR: /updates
+    volumes:
+      - app_data:/data
+      - ./.updates:/updates
     depends_on:
       migrate:
         condition: service_completed_successfully

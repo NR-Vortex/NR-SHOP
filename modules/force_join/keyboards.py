@@ -27,7 +27,7 @@ def join_keyboard():
 
     buttons.append([
         InlineKeyboardButton(
-            text="تایید عضویت ✅",
+            text="بررسی عضویت ✓",
             callback_data=CHECK_CALLBACK
         )
     ])

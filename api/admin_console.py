@@ -9,14 +9,28 @@ from io import BytesIO
 from pathlib import Path
 
 from aiohttp import web
+from aiogram.enums import ParseMode
+from aiogram.client.default import DefaultBotProperties
 from aiogram import Bot, Dispatcher
 from aiogram.client.session.aiohttp import AiohttpSession
-from aiogram.types import BufferedInputFile, Message, MessageId, Update
+from aiogram.types import BufferedInputFile, Message, MessageId, Update, User
 
 from core.button_theme import theme, save_theme
 from core.config import settings
 from core.loader import register_routers
 from modules.admin.keyboards import admin_dashboard_keyboard
+from modules.shop.keyboards import main_menu_keyboard
+from modules.force_join.keyboards import join_keyboard
+from modules.force_join.service import MembershipCheckError,get_missing_channels
+from modules.users.service import upsert_user
+from database.session import async_session
+
+UPLOAD_STATES = {
+    "SupportStates:waiting_admin_reply",
+    "SupportStates:waiting_initial_message",
+    "SupportStates:waiting_customer_reply",
+    "CheckoutStates:waiting_receipt",
+}
 from modules.checkout.admin_review import is_admin
 
 current=ContextVar("admin_web_view",default=None)
@@ -27,15 +41,17 @@ def plain(value):
 
 
 class Screen:
-    def __init__(self,uid):
+    def __init__(self,uid,mode):
+        self.mode=mode
         self.uid=uid
         self.lock=asyncio.Lock()
         self.media={}
         self.reset()
 
     def reset(self):
-        self.caption="مدیریت فروشگاه"
-        self.markup=admin_dashboard_keyboard()
+        self.caption="مدیریت فروشگاه" if self.mode=="admin" else "به NR SHOP خوش اومدی. سرویس‌ت رو انتخاب کن یا سفارش‌هات رو پیگیری کن."
+        self.markup=admin_dashboard_keyboard() if self.mode=="admin" else main_menu_keyboard()
+        self.media.clear()
         self.file=None
         self.notice=""
         self.revision=secrets.token_hex(12)
@@ -43,7 +59,19 @@ class Screen:
     def rows(self):
         if not self.markup:
             return []
-        return [[{"text":b.text,"action":b.callback_data} for b in row if b.callback_data and b.callback_data!="shop:home"] for row in self.markup.inline_keyboard]
+        rows=[]
+        for row in self.markup.inline_keyboard:
+            items=[]
+            for button in row:
+                action=button.callback_data
+                url=button.url
+                if action and (self.mode=="admin" and action!="shop:home" or self.mode=="shop" and not action.startswith(("admin:","vpnadmin:","support:admin:","updates:"))):
+                    items.append({"text":button.text,"action":action})
+                elif url and url.startswith("https://"):
+                    items.append({"text":button.text,"url":url})
+            if items:
+                rows.append(items)
+        return rows
 
 
 async def present(make_request,bot,method):
@@ -77,7 +105,8 @@ async def present(make_request,bot,method):
 async def lifecycle(app):
     dispatcher=Dispatcher()
     register_routers(dispatcher)
-    bot=Bot(settings.BOT_TOKEN.get_secret_value(),session=AiohttpSession(proxy=settings.BOT_PROXY))
+    bot=Bot(settings.BOT_TOKEN.get_secret_value(),session=AiohttpSession(proxy=settings.BOT_PROXY),
+        default=DefaultBotProperties(parse_mode=ParseMode.HTML))
     bot.session.middleware(present)
     app["console"]=(dispatcher,bot,{})
     try:
@@ -88,32 +117,64 @@ async def lifecycle(app):
 
 
 def install(app,identity):
-    async def authorized(request):
+    async def authorized(request,mode="admin"):
         user=await identity(request)
-        if not is_admin(user.id):
+        if mode=="admin" and not is_admin(user.id):
             raise web.HTTPForbidden()
         dp,bot,screens=app["console"]
-        return user,dp,bot,screens.setdefault(user.id,Screen(user.id))
+        return user,dp,bot,screens.setdefault(user.id,Screen(user.id,mode))
 
     async def payload(dp,bot,screen):
         state=dp.fsm.get_context(bot=bot,chat_id=screen.uid,user_id=screen.uid)
         step=await state.get_state()
         return web.json_response(dict(caption=screen.caption,rows=screen.rows(),notice=screen.notice,media=screen.file,
             revision=screen.revision,input=bool(step),password="password" in str(step).lower(),
-            upload=step=="SupportStates:waiting_admin_reply",theme=theme()),headers={"Cache-Control":"no-store"})
+            upload=step in UPLOAD_STATES,theme=theme()),headers={"Cache-Control":"no-store"})
 
     async def access(request):
         user=await identity(request)
         return web.json_response({'admin':is_admin(user.id)},headers={'Cache-Control':'no-store'})
 
+    async def activate(dp,bot,screen,user,mode):
+        state=dp.fsm.get_context(bot=bot,chat_id=user.id,user_id=user.id)
+        if screen.mode!=mode:
+            await state.clear()
+            screen.mode=mode
+            screen.reset()
+        if mode=="shop":
+            try:
+                missing=await get_missing_channels(bot,user.id)
+            except MembershipCheckError:
+                raise web.HTTPServiceUnavailable()
+            if missing:
+                await state.clear()
+                screen.reset()
+                screen.caption="برای ورود، ابتدا عضو کانال شوید و دوباره بررسی کنید."
+                screen.markup=join_keyboard()
+                return False
+            if screen.caption.startswith("برای ورود،"):
+                screen.reset()
+            if not getattr(screen,"customer_registered",False):
+                async with async_session() as db:
+                    await upsert_user(db,User(id=user.id,is_bot=False,first_name=user.first_name,last_name=user.last_name,username=user.username))
+                screen.customer_registered=True
+        return True
+
     async def screen(request):
-        _,dp,bot,v=await authorized(request)
+        mode=request.match_info.get("mode","admin")
+        user,dp,bot,v=await authorized(request,mode)
         async with v.lock:
+            await activate(dp,bot,v,user,mode)
             return await payload(dp,bot,v)
 
     async def event(request):
-        user,dp,bot,v=await authorized(request)
+        mode=request.match_info.get("mode","admin")
+        user,dp,bot,v=await authorized(request,mode)
         async with v.lock:
+            if v.mode!=mode:
+                raise web.HTTPConflict()
+            if not await activate(dp,bot,v,user,mode):
+                return await payload(dp,bot,v)
             body=await request.post()
             if body.get("revision")!=v.revision:
                 raise web.HTTPConflict()
@@ -128,22 +189,33 @@ def install(app,identity):
             v.input_text=None
             v.input_id=secrets.randbelow(1000000000)+1
             msg={"message_id":v.input_id,"date":int(time.time()),"chat":{"id":user.id,"type":"private"}}
-            sender={"id":user.id,"is_bot":False,"first_name":user.first_name}
+            sender={"id":user.id,"is_bot":False,"first_name":user.first_name,"last_name":user.last_name,"username":user.username}
             update={"update_id":v.input_id}
             if action=="input" and await state.get_state():
                 upload=body.get("file")
-                if isinstance(upload,web.FileField) and await state.get_state()=="SupportStates:waiting_admin_reply":
-                    document=BufferedInputFile(upload.file.read(),filename=Path(upload.filename).name)
-                    posted=await bot.send_document(user.id,document,caption="پیوست پاسخ پشتیبانی")
-                    msg.update(message_id=posted.message_id,document=posted.document.model_dump())
+                step=await state.get_state()
+                if isinstance(upload,web.FileField) and step in UPLOAD_STATES:
+                    content=upload.file.read()
+                    is_photo=content.startswith((b"\xff\xd8\xff",b"\x89PNG\r\n\x1a\n"))
+                    is_pdf=content.startswith(b"%PDF-")
+                    if not is_photo and not is_pdf:
+                        raise web.HTTPBadRequest()
+                    attachment=BufferedInputFile(content,filename="receipt.png" if content.startswith(b"\x89PNG") else "receipt.jpg" if is_photo else "attachment.pdf")
+                    if is_photo:
+                        posted=await bot.send_photo(user.id,attachment,caption="تصویر ثبت‌شده از مینی‌اپ")
+                        msg["photo"]=[photo.model_dump() for photo in posted.photo]
+                    else:
+                        posted=await bot.send_document(user.id,attachment,caption="فایل ثبت‌شده از مینی‌اپ")
+                        msg["document"]=posted.document.model_dump()
+                    msg["message_id"]=posted.message_id
                 else:
                     value=body.get("value")
-                    if not isinstance(value,str) or not value.strip() or len(value)>4096:
+                    if not isinstance(value,str) or not value.strip() or len(value)>4096 or (mode=="shop" and value.lstrip().startswith("/") and value.strip()!="/cancel"):
                         raise web.HTTPBadRequest()
                     v.input_text=value
                     msg["text"]=value
                 update["message"]={**msg,"from":sender}
-            elif action in {b["action"] for row in v.rows() for b in row}:
+            elif action in {b.get("action") for row in v.rows() for b in row}:
                 update["callback_query"]={"id":secrets.token_hex(12),"from":sender,"chat_instance":"admin-web","data":action,
                     "message":{**msg,"text":v.caption or " "}}
             else:
@@ -157,8 +229,13 @@ def install(app,identity):
             return await payload(dp,bot,v)
 
     async def media(request):
-        _,_,bot,v=await authorized(request)
+        mode=request.match_info.get("mode","admin")
+        _,_,bot,v=await authorized(request,mode)
+        if v.mode!=mode:
+            raise web.HTTPNotFound()
         file=v.media.get(request.match_info["key"])
+        if isinstance(file,BufferedInputFile):
+            return web.Response(body=file.data,content_type="image/png",headers={"Cache-Control":"no-store","X-Content-Type-Options":"nosniff"})
         if not isinstance(file,str):
             raise web.HTTPNotFound()
         buf=BytesIO()
@@ -182,6 +259,10 @@ def install(app,identity):
 
     app.cleanup_ctx.append(lifecycle)
     app.router.add_get("/admin.html",page)
+    app.router.add_get("/shop.html",page)
+    app.router.add_get("/api/{mode:shop}/screen",screen)
+    app.router.add_post("/api/{mode:shop}/event",event)
+    app.router.add_get("/api/{mode:shop}/media/{key}",media)
     app.router.add_get("/api/access",access)
     app.router.add_get("/api/admin/screen",screen)
     app.router.add_post("/api/admin/event",event)

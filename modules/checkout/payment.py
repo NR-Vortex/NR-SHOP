@@ -13,7 +13,7 @@ def get_payment_settings():
         "cardholder": values.get("PAYMENT_CARDHOLDER", "") or "",
         "description": values.get(
             "PAYMENT_DESCRIPTION",
-            "لطفاً پس از واریز رسید را ارسال کنید.",
+            "بعد از واریز، «ارسال رسید» رو بزن و عکس یا PDF رسید رو بفرست.",
         ) or "",
     }
 
@@ -26,7 +26,7 @@ def payment_is_configured():
 def build_payment_text(order):
     settings = get_payment_settings()
     return content_prefix("texts:payment") + f"""
-💳 <b>اطلاعات پرداخت NR SHOP</b>
+💳 <b>پرداخت سفارش</b>
 
 ━━━━━━━━━━━━━━━━━━
 

@@ -25,7 +25,7 @@ async def open_admin_command(message: Message):
         return
 
     await message.answer(
-        "⚙️ <b>داشبورد مدیریت NR SHOP</b>\n\nبخش موردنظر را انتخاب کنید.",
+        "⚙️ <b>داشبورد مدیریت NR SHOP</b>\n\nبرای مدیریت فروشگاه، یکی از بخش‌ها را انتخاب کن.",
         reply_markup=admin_dashboard_keyboard()
     )
 
@@ -43,7 +43,7 @@ async def dashboard(callback: CallbackQuery, state: FSMContext):
     if not is_admin(callback.from_user.id): await callback.answer("دسترسی غیرمجاز", show_alert=True); return
     await state.clear()
     await callback.answer()
-    if isinstance(callback.message, Message): await callback.message.edit_text("⚙️ <b>داشبورد مدیریت NR SHOP</b>\n\nلطفاً بخش موردنظر را انتخاب کنید:", reply_markup=admin_dashboard_keyboard())
+    if isinstance(callback.message, Message): await callback.message.edit_text("⚙️ <b>داشبورد مدیریت NR SHOP</b>\n\nبرای مدیریت فروشگاه، یکی از بخش‌ها را انتخاب کن.", reply_markup=admin_dashboard_keyboard())
 
 @router.callback_query(F.data == "admin:section:users")
 async def users_menu(callback: CallbackQuery):
@@ -55,7 +55,7 @@ async def users_menu(callback: CallbackQuery):
 async def user_search_start(callback: CallbackQuery, state: FSMContext):
     if not is_admin(callback.from_user.id): await callback.answer("دسترسی غیرمجاز", show_alert=True); return
     await state.set_state(AdminUserStates.search); await callback.answer()
-    if isinstance(callback.message, Message): await callback.message.answer("🔎 Telegram ID، username، نام یا شماره تلفن کاربر را ارسال کنید:")
+    if isinstance(callback.message, Message): await callback.message.answer("شناسهٔ تلگرام، نام کاربری، نام یا شمارهٔ تلفن کاربر را بفرست.")
 
 @router.message(AdminUserStates.search)
 async def user_search(message: Message, state: FSMContext):
@@ -86,14 +86,14 @@ async def wallet_operation_start(callback: CallbackQuery, state: FSMContext):
     if not is_admin(callback.from_user.id): await callback.answer("دسترسی غیرمجاز", show_alert=True); return
     kind, user_id = callback.data.split(":")[-2:]
     await state.update_data(operation_id=uuid4().hex, wallet_kind=kind, wallet_user_id=int(user_id)); await state.set_state(AdminUserStates.amount); await callback.answer()
-    if isinstance(callback.message, Message): await callback.message.answer("مبلغ را به تومان ارسال کنید:")
+    if isinstance(callback.message, Message): await callback.message.answer("مبلغ تغییر اعتبار را به تومان بفرست.")
 
 @router.message(AdminUserStates.amount)
 async def wallet_amount(message: Message, state: FSMContext):
     try: amount = int((message.text or "").replace(",", "").strip())
     except ValueError: await message.answer("مبلغ معتبر نیست."); return
     if not 0 < amount < 2**63: await message.answer("مبلغ باید مثبت باشد."); return
-    await state.update_data(amount=amount); await state.set_state(AdminUserStates.reason); await message.answer("علت عملیات را ارسال کنید:")
+    await state.update_data(amount=amount); await state.set_state(AdminUserStates.reason); await message.answer("دلیل را بنویس تا در سوابق کیف پول ثبت شود.")
 
 @router.message(AdminUserStates.reason)
 async def wallet_reason(message: Message, state: FSMContext):

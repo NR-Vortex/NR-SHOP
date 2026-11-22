@@ -58,7 +58,7 @@ def get_order_text(order):
     service_type = escape(order.service_type) if order.service_type else "ثبت نشده"
     delivery = escape(order.delivery_method) if order.delivery_method else "ثبت نشده"
     return content_prefix("texts:invoice") + f"""
-🛍 <b>خلاصه سفارش NR SHOP</b>
+🛍 <b>مرور سفارش</b>
 
 ━━━━━━━━━━━━━━━━━━
 

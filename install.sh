@@ -9,7 +9,11 @@ docker compose version >/dev/null
 docker info >/dev/null
 
 destination="${1:-$PWD/nr-shop}"
-ref="${NR_SHOP_REF:-main}"
+ref="${NR_SHOP_REF:-}"
+if [[ -z "$ref" ]]; then
+    ref=$(curl --fail --silent --show-error https://api.github.com/repos/NR-Vortex/NR-SHOP/releases/latest |
+        python3 -c 'import json,sys; print(json.load(sys.stdin)["tag_name"])')
+fi
 [[ "$ref" =~ ^[A-Za-z0-9._-]+$ ]] || { echo "Invalid release ref." >&2; exit 1; }
 if [[ -e "$destination" || -L "$destination" ]]; then
     echo "Destination already exists: $destination" >&2
@@ -69,6 +73,13 @@ MINIAPP_DOMAIN=$domain
 MINIAPP_URL=$url
 ENV
 unset token
+mkdir -p .updates
 docker compose -f compose.production.yaml "${profile[@]}" up -d --build
 echo "Installed in $destination"
+if (( EUID != 0 )) && [[ "$(uname -s)" == Linux ]]; then
+    read -rp "Enable updates approved by your Telegram admin? [y/N] " updates </dev/tty
+    if [[ "$updates" =~ ^[yY]$ ]] && ! bash scripts/enable-updates.sh; then
+        echo "Bot installed. The updater needs a working systemd user session."
+    fi
+fi
 echo "Open https://t.me/$bot_name and send /admin."

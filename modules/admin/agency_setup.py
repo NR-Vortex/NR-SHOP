@@ -139,7 +139,7 @@ async def chat(message,state):
         await message.answer("ربات قبلاً ثبت شده است.")
         return
     await state.clear()
-    await message.answer("توکن و چت‌آیدی ثبت شدند. برای فعال‌سازی ربات حجم بخرید.",reply_markup=button("خرید حجم","agency:buy"))
+    await message.answer("ربات فروش وصل شد. برای شروع فروش، سهمیهٔ ربات رو شارژ کن.",reply_markup=button("خرید حجم","agency:buy"))
 
 
 @router.callback_query(F.data=="admin:agency:price")
@@ -182,7 +182,7 @@ async def buy(callback,state):
     await state.clear()
     await state.update_data(panel=panel)
     await state.set_state(Setup.amount)
-    await callback.message.answer(f"هر گیگابایت {price:,} تومان است. چند گیگابایت می‌خواهید؟")
+    await callback.message.answer(f"هر گیگابایت {price:,} تومان است. چند گیگ می‌خوای به سهمیه‌ات اضافه کنی؟")
 
 
 @router.message(Setup.amount,F.text)
@@ -218,7 +218,7 @@ async def pay(callback,state):
             await callback.answer("این خرید قبلاً ثبت شده است.",show_alert=True)
             return
         if wallet is None or wallet.balance<data["amount"]:
-            await callback.answer("موجودی کیف پول کافی نیست.",show_alert=True)
+            await callback.answer("موجودی کیف پول برای این خرید کافی نیست.",show_alert=True)
             return
         wallet.balance-=data["amount"]
         session.add(WalletTransaction(wallet_id=wallet.id,kind="debit",amount=data["amount"],balance_after=wallet.balance,reference=ref,description=f"خرید {data['gb']} گیگابایت نمایندگی"))

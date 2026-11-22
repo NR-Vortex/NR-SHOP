@@ -74,7 +74,10 @@ async def vpn_trial_claim(callback: CallbackQuery):
 
 
 def vpn_text(name):
-    return content_prefix("texts:vpn_menu") + f"😎 کاربر عزیز {escape(name)} خوش آمدید 👍\n\n💎 بهترین سرورها، تانل هوشمند مخصوص سخت‌ترین اختلال و قطعی‌ها، مخصوص گیم، وب و کارهای حساس همراه با IP ثابت ⚡️"
+    return content_prefix("texts:vpn_menu") + (
+        f"<b>اشتراک VPN</b>\n\n{escape(name)}، بسته‌ها رو بر اساس حجم و مدت مقایسه کن. "
+        "اگر اشتراک داری، لینک و جزئیاتش در «سرویس‌های من» هست."
+    )
 
 
 @router.callback_query(F.data == "shop:category:vpn")

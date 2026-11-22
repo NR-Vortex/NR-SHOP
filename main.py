@@ -11,6 +11,7 @@ from core.logging_config import setup_logging
 from core.loader import register_routers
 
 from modules.admin.agency_bots import supervise
+from modules.admin.updates import notify_releases
 from modules.force_join.middleware import ForceJoinMiddleware
 
 
@@ -52,6 +53,7 @@ async def main():
     logger.info("NR SHOP BOT STARTED")
 
     agencies = asyncio.create_task(supervise(bot))
+    releases = asyncio.create_task(notify_releases(bot))
     try:
 
         await dp.start_polling(
@@ -62,7 +64,8 @@ async def main():
     finally:
 
         agencies.cancel()
-        await asyncio.gather(agencies, return_exceptions=True)
+        releases.cancel()
+        await asyncio.gather(agencies,releases,return_exceptions=True)
         await bot.session.close()
 
         logger.info("NR SHOP BOT STOPPED")

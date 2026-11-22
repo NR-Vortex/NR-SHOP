@@ -26,7 +26,7 @@ async def register_customer(bot_id, user):
 
 
 def storefront(is_owner):
-    entries=[("بسته‌ها و خرید","rs:plans:0"),("سفارش‌های من","rs:mine:0")]
+    entries=[("خرید اشتراک","rs:plans:0"),("سفارش‌های من","rs:mine:0")]
     if is_owner:
         entries.append(("مدیریت فروش","rs:manage"))
     return keyboard(entries)
@@ -153,9 +153,9 @@ def register_store(dispatcher,owner,bot_id):
             return
         rows=await records("UPDATE agency_retail_orders SET receipt=:file,status='review' WHERE id=:id AND bot_id=:bot AND customer=:customer AND status='open' RETURNING id",file=m.photo[-1].file_id,id=int(caption),customer=m.from_user.id)
         if not rows:
-            await m.answer("سفارش قابل ثبت رسید نیست.")
+            await m.answer("برای این سفارش فعلاً نمی‌شه رسید ثبت کرد. وضعیتش رو در «سفارش‌های من» ببین.")
             return
-        await m.answer("رسید برای بررسی ثبت شد.")
+        await m.answer("رسید ثبت شد. وضعیت رو از «سفارش‌های من» پیگیری کن.")
         try:
             await m.bot.send_message(owner,f"رسید جدید سفارش {caption}",reply_markup=keyboard([("بررسی رسید",f"rs:show:{int(caption)}")]))
         except TelegramAPIError:

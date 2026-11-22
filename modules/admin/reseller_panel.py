@@ -48,7 +48,7 @@ async def home(q,state):
     from modules.admin.agency_setup import balance
     available=await balance(owner,account[0])
     await q.answer()
-    await q.message.answer(f"پنل نمایندگی شما\nحجم قابل تخصیص: {available:,} گیگابایت",reply_markup=buttons([
+    await q.message.answer(f"پنل نمایندگی\nسهمیه آمادهٔ تخصیص {available:,} گیگابایت",reply_markup=buttons([
         ("خرید حجم پنل","panel:buy"),("ساخت کانفیگ","panel:issue"),("کانفیگ‌های من","panel:list:0")]))
 
 
@@ -59,7 +59,7 @@ async def issue_start(q,state):
         return
     await q.answer()
     await state.set_state(Issue.limits)
-    await q.message.answer("حجم به گیگابایت و مدت به روز را با فاصله بفرستید. مثلاً ۱۰ ۳۰ برای کانفیگ ۱۰ گیگ و ۳۰ روزه. لغو با /cancel")
+    await q.message.answer("اول حجم و بعد مدت رو با فاصله بفرست. مثلاً ۱۰ ۳۰ یعنی ۱۰ گیگ برای ۳۰ روز. برای لغو، /cancel رو بفرست.")
 
 
 @router.message(Issue.limits,Command("cancel"))

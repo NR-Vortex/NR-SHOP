@@ -3,9 +3,9 @@ from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 def vpn_menu_keyboard():
     return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="🏅 خرید اشتراک اختصاصی VIP", callback_data="vpn:buy")],
-        [InlineKeyboardButton(text="🕹️ اکانت تست", callback_data="vpn:trial")],
-        [InlineKeyboardButton(text="🪙 اعتبار من", callback_data="vpn:wallet"), InlineKeyboardButton(text="👨🏻‍💻 سرویس‌های من", callback_data="vpn:services")],
+        [InlineKeyboardButton(text="خرید اشتراک VPN", callback_data="vpn:buy")],
+        [InlineKeyboardButton(text="اشتراک آزمایشی", callback_data="vpn:trial")],
+        [InlineKeyboardButton(text="کیف پول", callback_data="vpn:wallet"), InlineKeyboardButton(text="👨🏻‍💻 سرویس‌های من", callback_data="vpn:services")],
         [InlineKeyboardButton(text="💡 آموزش استفاده", callback_data="vpn:tutorial"), InlineKeyboardButton(text="📢 معرفی به دوستان", callback_data="vpn:referral")],
         [InlineKeyboardButton(text="🧑🏻‍🚀 تماس با پشتیبانی", callback_data="support:menu:vpn")],
         [InlineKeyboardButton(text="👑 درخواست همکاری", callback_data="vpn:partnership")],

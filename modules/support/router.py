@@ -54,7 +54,7 @@ async def support_menu(callback: CallbackQuery):
     section = callback.data.split(":")[2] if len(callback.data.split(":")) > 2 else "general"
     await callback.answer()
     if isinstance(callback.message, Message):
-        await callback.message.edit_text(content_prefix("texts:support") + "🎧 <b>پشتیبانی NR SHOP</b>\n\nلطفاً یکی از گزینه‌های زیر را انتخاب کنید.", reply_markup=support_menu_keyboard(section))
+        await callback.message.edit_text(content_prefix("texts:support") + "🎧 <b>پشتیبانی NR SHOP</b>\n\nتیکت جدید باز کن یا پاسخ تیکت‌هات رو ببین.", reply_markup=support_menu_keyboard(section))
 
 
 @router.callback_query(F.data.startswith("support:new:"))

@@ -1,5 +1,11 @@
 # NR SHOP · فروشگاه تلگرامی و پنل نمایندگی
 
+[![Release](https://img.shields.io/github/v/release/NR-Vortex/NR-SHOP)](https://github.com/NR-Vortex/NR-SHOP/releases/latest)
+[![Docker build](https://github.com/NR-Vortex/NR-SHOP/actions/workflows/build.yml/badge.svg)](https://github.com/NR-Vortex/NR-SHOP/actions/workflows/build.yml)
+[![Telegram](https://img.shields.io/badge/Platform-Telegram-229ED9)](https://core.telegram.org/bots/webapps)
+
+[نصاب مستقیم](https://raw.githubusercontent.com/NR-Vortex/NR-SHOP/main/install.sh) · [انتشارها](https://github.com/NR-Vortex/NR-SHOP/releases) · [پیشنهاد قابلیت و گزارش اشکال](https://github.com/NR-Vortex/NR-SHOP/issues/new)
+
 [English documentation](README.en.md)
 
 NR SHOP یک فروشگاه خودمیزبان تلگرام برای فروش اشتراک VPN و محصولات دیجیتال است. مدیر سرور مرکزی، فروش، رسیدها و نماینده‌ها را از ربات و مینی‌اپ مدیریت می‌کند.
@@ -40,3 +46,21 @@ docker compose -f compose.production.yaml --profile https up -d
 ```
 
 از فایل `.env` و بکاپ‌ها خصوصی نگهداری کن. بازیابی توکن‌های رمزگذاری‌شده و اطلاعات اتصال پنل به همان کلیدهای اولیه نیاز دارد.
+
+## به‌روزرسانی از تلگرام
+
+ربات مدیران همان نصب را از نسخهٔ پایدار جدید باخبر می‌کند. «جزئیات نسخه در GitHub» تغییرات را باز می‌کند. «نصب روی همین سرور» پس از تأیید مدیر، درخواست را به سرویس محلی می‌سپارد. نسخه و نتیجهٔ نصب را از منوی «به‌روزرسانی» ببین.
+
+اگر سرویس هنگام نصب فعال نشده، از داخل پوشهٔ نصب اجرا کن:
+
+```bash
+bash scripts/enable-updates.sh
+```
+
+سرویس به حساب غیر root با دسترسی Docker و نشست سالم `systemd --user` نیاز دارد. برای فعال ماندن تایمر بعد از خروج از SSH، مدیر سرور می‌تواند `loginctl enable-linger` را برای حساب نصب فعال کند. نصب‌های قدیمی یک بار باید دستی به نسخهٔ دارای این اسکریپت ارتقا پیدا کنند؛ فایل `.env` و حجم‌های Docker را حفظ کن.
+
+به‌روزرسان آخرین انتشار پایدار مخزن رسمی را بررسی می‌کند، از PostgreSQL و تنظیمات در `.update-backups` بکاپ می‌گیرد و قبل از راه‌اندازی دوباره، مهاجرت را اجرا می‌کند.
+
+## مشارکت و حمایت
+
+با Star، معرفی پروژه، گزارش اشکال یا Pull Request از توسعه حمایت کن. در گزارش، نسخه و مراحل بازتولید را بنویس و اطلاعات مشتری و کلیدها را حذف کن.

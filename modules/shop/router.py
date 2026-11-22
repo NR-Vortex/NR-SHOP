@@ -48,7 +48,7 @@ CATEGORY_INFO = {
 
 به بخش خدمات هوش مصنوعی خوش آمدید.
 
-محصولات این دسته به زودی اضافه می‌شوند.
+در این دسته هنوز محصولی برای خرید موجود نیست.
 """
     },
 
@@ -59,7 +59,7 @@ CATEGORY_INFO = {
 
 در این قسمت سرویس‌های VPN ارائه خواهند شد.
 
-محصولات به زودی اضافه می‌شوند.
+در این دسته هنوز محصولی برای خرید موجود نیست.
 """
     },
 
@@ -70,7 +70,7 @@ CATEGORY_INFO = {
 
 به بخش خدمات تلگرام خوش آمدید.
 
-محصولات به زودی اضافه می‌شوند.
+در این دسته هنوز محصولی برای خرید موجود نیست.
 """
     },
 
@@ -81,7 +81,7 @@ CATEGORY_INFO = {
 
 در این قسمت انواع سرورهای مجازی ارائه خواهند شد.
 
-محصولات به زودی اضافه می‌شوند.
+در این دسته هنوز محصولی برای خرید موجود نیست.
 """
     }
 
@@ -540,13 +540,13 @@ async def ai_email_start(callback: CallbackQuery, state):
         row = (await session.execute(select(Order, Product).join(Product, Product.id == Order.product_id).join(Category, Category.id == Product.category_id).where(Order.id == order_id, Order.telegram_user_id == callback.from_user.id, Category.section == "ai", Product.account_type == "dedicated"))).first()
     if not row: await callback.answer("این سفارش برای ثبت ایمیل در دسترس نیست.", show_alert=True); return
     await state.update_data(ai_email_order_id=order_id); await state.set_state(CheckoutStates.waiting_ai_email); await callback.answer()
-    if isinstance(callback.message, Message): await callback.message.answer("📧 لطفاً فقط ایمیل خود را ارسال کنید:")
+    if isinstance(callback.message, Message): await callback.message.answer("ایمیلی رو بفرست که می‌خوای اشتراک روی اون فعال بشه.")
 
 
 @router.message(CheckoutStates.waiting_ai_email)
 async def ai_email_message(message: Message, state):
     email = (message.text or "").strip()
-    if not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", email): await message.answer("❌ ایمیل معتبر نیست. لطفاً دوباره ارسال کنید."); return
+    if not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", email): await message.answer("این آدرس معتبر نیست. ایمیل رو به شکل name@example.com بفرست."); return
     order_id = (await state.get_data()).get("ai_email_order_id")
     async with async_session() as session:
         row = (await session.execute(select(Order, Product).join(Product, Product.id == Order.product_id).join(Category, Category.id == Product.category_id).where(Order.id == order_id, Order.telegram_user_id == message.from_user.id, Category.section == "ai", Product.account_type == "dedicated"))).first()
@@ -601,11 +601,10 @@ async def support_handler(callback: CallbackQuery):
 
     if isinstance(callback.message, Message):
 
-        await callback.message.edit_text(
-            """
-🎧 <b>پشتیبانی NR SHOP</b>
+        from modules.support.keyboards import support_menu_keyboard
 
-به‌زودی سیستم پشتیبانی راه‌اندازی می‌شود.
-""",
-            reply_markup=back_to_shop_keyboard()
+        await callback.message.edit_text(
+            "🎧 <b>پشتیبانی هوش مصنوعی</b>\n\n"
+            "برای راهنمایی دربارهٔ خرید یا فعال‌سازی، تیکت جدید باز کن. پاسخ رو در «تیکت‌های من» می‌بینی.",
+            reply_markup=support_menu_keyboard("ai"),
         )

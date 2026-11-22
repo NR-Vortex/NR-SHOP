@@ -1,4 +1,5 @@
 import os
+from urllib.parse import urljoin
 from aiogram.types import (
     WebAppInfo,
     InlineKeyboardMarkup,
@@ -21,8 +22,10 @@ def main_menu_keyboard():
     buttons = []
 
     url = os.getenv('MINIAPP_URL', '').strip()
-    if url.startswith('https://') and is_feature_enabled('vps'):
-        buttons.append([InlineKeyboardButton(text='داشبورد نمایندگی', web_app=WebAppInfo(url=url))])
+    if url.startswith('https://'):
+        buttons.append([InlineKeyboardButton(text='🛍 ورود به فروشگاه', web_app=WebAppInfo(url=urljoin(url,'shop.html')))])
+        if is_feature_enabled('vps'):
+            buttons.append([InlineKeyboardButton(text='داشبورد نمایندگی', web_app=WebAppInfo(url=url))])
 
     # دسته بندی های فروشگاه
     for key, title in CATEGORIES.items():
@@ -110,20 +113,20 @@ def ai_services_keyboard():
     return InlineKeyboardMarkup(inline_keyboard=[
         [
             InlineKeyboardButton(
-                text="🟢 chatgpt",
+                text="ChatGPT",
                 callback_data="ai:service:chatgpt",
             ),
             InlineKeyboardButton(
-                text="💎 gemini",
+                text="Gemini",
                 callback_data="ai:service:gemini",
             ),
         ],
         [InlineKeyboardButton(
-            text="⚫ super grok",
+            text="Super Grok",
             callback_data="ai:service:grok",
         )],
         [InlineKeyboardButton(
-            text="◈ cursor",
+            text="Cursor",
             callback_data="ai:service:cursor",
         )],
         [InlineKeyboardButton(

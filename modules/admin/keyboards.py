@@ -13,6 +13,7 @@ def admin_dashboard_keyboard():
         (("📢 پیام همگانی", "admin:section:broadcast"), ("📝 مدیریت متن‌ها", "admin:section:texts")),
         (("🏢 مدیریت نمایندگان", "admin:section:representatives"), ("🗄 دیتابیس", "admin:section:database")),
         (("📣 تبلیغات", "admin:section:ads"), ("⚙️ تنظیمات ربات", "admin:section:settings")),
+        (("⬆️ به‌روزرسانی", "updates:menu"),),
         (("🔙 بازگشت به منوی اصلی", "shop:home"),),
     ]
     keyboard = [[InlineKeyboardButton(text=t, callback_data=c) for t, c in row] for row in rows]
