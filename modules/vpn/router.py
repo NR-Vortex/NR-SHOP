@@ -17,7 +17,7 @@ from modules.vpn.partnership import PartnershipStates
 from modules.checkout.admin_review import get_admin_ids
 from modules.vpn.states import VPNStates
 from modules.vpn.username import automatic_username, is_valid_username
-from modules.referral.service import referral_stats
+from modules.referral.service import referral_summary
 from modules.vpn.keyboards import vpn_referral_keyboard
 from urllib.parse import quote
 from modules.vpn.trial import claim_query, claim_trial, get_trial_settings, trial_available
@@ -201,13 +201,13 @@ async def vpn_username_message(message: Message, state: FSMContext):
 async def vpn_referral(callback: CallbackQuery):
     me = await callback.bot.get_me()
     link = f"https://t.me/{me.username}?start=ref_{callback.from_user.id}"
-    async with async_session() as session: rows = await referral_stats(session, callback.from_user.id)
+    async with async_session() as session: count, rows = await referral_summary(session, callback.from_user.id)
     await callback.answer()
     if isinstance(callback.message, Message): await callback.message.edit_text(
         "📢 <b>دوستانت را به NR SHOP دعوت کن!</b>\n\n"
         "💎 با لینک اختصاصی خودت دوستانت را به خانواده NR SHOP دعوت کن.\n\n"
         f"🔗 لینک دعوت اختصاصی:\n<code>{link}</code>\n\n"
-        f"👥 تعداد دوستان دعوت‌شده: {len(rows)}\n\n❤️ ممنون از همراهی شما!",
+        f"👥 تعداد دوستان دعوت‌شده: {count}\n\n❤️ ممنون از همراهی شما!",
         reply_markup=vpn_referral_keyboard())
 
 
@@ -221,10 +221,10 @@ async def vpn_referral_share(callback: CallbackQuery):
 
 @router.callback_query(F.data == "vpn:referral:friends")
 async def vpn_referral_friends(callback: CallbackQuery):
-    async with async_session() as session: rows = await referral_stats(session, callback.from_user.id)
+    async with async_session() as session: count, rows = await referral_summary(session, callback.from_user.id)
     names = "\n".join(f"• کاربر دعوت‌شده <code>{user_id}</code>" for user_id, _ in rows) or "هنوز دوستی دعوت نشده است."
     await callback.answer()
-    if isinstance(callback.message, Message): await callback.message.edit_text(f"👥 <b>دوستان دعوت‌شده</b>\n\nتعداد: {len(rows)}\n\n{names}", reply_markup=vpn_referral_keyboard())
+    if isinstance(callback.message, Message): await callback.message.edit_text(f"👥 <b>دوستان دعوت‌شده</b>\n\nتعداد: {count}\n\n{names}", reply_markup=vpn_referral_keyboard())
 
 
 @router.callback_query(F.data == "vpn:partnership")

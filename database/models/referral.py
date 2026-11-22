@@ -10,3 +10,8 @@ class Referral(Base):
     referrer_user_id: Mapped[int] = mapped_column(BigInteger, index=True, nullable=False)
     referred_user_id: Mapped[int] = mapped_column(BigInteger, index=True, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+class PendingReferral(Base):
+    __tablename__ = "pending_referrals"
+    referred_user_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    referrer_user_id: Mapped[int] = mapped_column(BigInteger, nullable=False)

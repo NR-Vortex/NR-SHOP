@@ -3,7 +3,7 @@ from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMar
 from sqlalchemy import select
 from urllib.parse import quote
 from database.session import async_session
-from modules.referral.service import referral_stats
+from modules.referral.service import referral_summary
 
 router = Router(name="referral")
 
@@ -17,11 +17,11 @@ def referral_keyboard(link: str):
 async def referral_handler(callback: CallbackQuery):
     me = await callback.bot.get_me()
     link = f"https://t.me/{me.username}?start=ref_{callback.from_user.id}"
-    async with async_session() as session: rows = await referral_stats(session, callback.from_user.id)
+    async with async_session() as session: count, rows = await referral_summary(session, callback.from_user.id)
     names = "\n".join(f"• <code>{user_id}</code>" for user_id, _ in rows) or "هنوز دوستی دعوت نشده است."
     await callback.answer()
     if isinstance(callback.message, Message): await callback.message.edit_text(
         "👥 <b>دعوت دوستان و اعتبار</b>\n\n"
         f"🔗 لینک دعوت اختصاصی شما:\n<code>{link}</code>\n\n"
-        f"👤 تعداد دعوت‌شدگان: {len(rows)}\n\n📋 فهرست دوستان:\n{names}",
+        f"👤 تعداد دعوت‌شدگان: {count}\n\n📋 آخرین دعوت‌ها:\n{names}",
         reply_markup=referral_keyboard(link))

@@ -2,6 +2,8 @@ import logging
 
 from aiogram import BaseMiddleware, Bot
 from aiogram.types import Message, CallbackQuery
+from aiogram.enums import ChatType
+from modules.referral.service import parse_start_referrer, remember_referral
 
 from .service import (
     get_missing_channels,
@@ -41,6 +43,12 @@ class ForceJoinMiddleware(BaseMiddleware):
             if isinstance(event, Message): await event.answer("🚫 دسترسی شما به ربات مسدود شده است.")
             elif isinstance(event, CallbackQuery): await event.answer("🚫 دسترسی شما مسدود شده است.", show_alert=True)
             return
+
+        if isinstance(event, Message) and event.chat.type==ChatType.PRIVATE:
+            referrer=parse_start_referrer(event.text)
+            if referrer:
+                async with async_session() as session:
+                    await remember_referral(session,referrer,user.id)
 
         # اجازه عبور به دکمه بررسی عضویت
         if (

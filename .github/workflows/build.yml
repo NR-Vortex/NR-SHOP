@@ -25,7 +25,7 @@ jobs:
           docker compose -f compose.production.yaml up -d --build --wait --wait-timeout 150 miniapp
       - name: Verify migrations and served pages
         run: |
-          docker compose -f compose.production.yaml exec -T postgres psql -U nr_shop_user -d nr_shop -Atc 'SELECT version_num FROM alembic_version' | grep -Fx d09a3ef638cc
+          docker compose -f compose.production.yaml exec -T postgres psql -U nr_shop_user -d nr_shop -Atc 'SELECT version_num FROM alembic_version' | grep -Fx e1ab40f749dd
           docker compose -f compose.production.yaml exec -T miniapp python - <<'PY'
           from urllib.request import urlopen
           for page in ('/', '/shop.html', '/admin.html', '/representative.html'):
@@ -103,6 +103,30 @@ jobs:
                       assert await db.scalar(select(func.count(VPNTrialClaim.id)))==1
               assert delivery.await_count==2
               assert delivery.await_args_list[0].args[2:]==delivery.await_args_list[1].args[2:]
+          asyncio.run(main())
+          PY
+      - name: Verify referral survives the join gate and counts once
+        run: |
+          docker compose -f compose.production.yaml exec -T miniapp python - <<'PY'
+          import asyncio
+          from database.session import async_session
+          from modules.referral.service import complete_referral,parse_start_referrer,referral_summary,remember_referral
+          async def main():
+              assert parse_start_referrer('/start@nr_shop ref_101') == 101
+              assert parse_start_referrer('/start ref_9223372036854775808') is None
+              async with async_session() as db:
+                  await remember_referral(db,101,202)
+                  await remember_referral(db,102,202)
+                  assert (await referral_summary(db,101))[0]==0
+              async with async_session() as db:
+                  assert await complete_referral(db,202)
+                  assert not await complete_referral(db,202)
+                  await remember_referral(db,102,202)
+                  assert not await complete_referral(db,202)
+                  await remember_referral(db,101,101)
+                  assert not await complete_referral(db,101)
+                  assert (await referral_summary(db,101))[0]==1
+                  assert (await referral_summary(db,102))[0]==0
           asyncio.run(main())
           PY
       - if: failure()

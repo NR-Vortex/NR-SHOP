@@ -15,6 +15,9 @@ from modules.shop.keyboards import main_menu_keyboard
 
 from modules.start.content import build_welcome_message
 from core.message_manager import send_replacing_message
+from database.session import async_session
+from modules.referral.service import complete_referral
+from modules.users.service import upsert_user
 
 
 router = Router(name="force_join")
@@ -53,6 +56,10 @@ async def verify_membership(
         )
 
         return
+
+    async with async_session() as session:
+        await upsert_user(session,callback.from_user)
+        await complete_referral(session,callback.from_user.id)
 
     # عضویت تایید شد
     await callback.answer(

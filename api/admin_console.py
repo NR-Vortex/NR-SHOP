@@ -27,6 +27,7 @@ from modules.shop.keyboards import main_menu_keyboard
 from modules.force_join.keyboards import join_keyboard
 from modules.force_join.service import MembershipCheckError,get_missing_channels
 from modules.users.service import upsert_user
+from modules.referral.service import complete_referral
 from database.session import async_session
 from database.models import User as Account
 
@@ -191,6 +192,7 @@ def install(app,identity):
                     exists=await db.scalar(select(Account.id).where(Account.telegram_id==user.id))
                     if exists is None:
                         await upsert_user(db,User(id=user.id,is_bot=False,first_name=user.first_name,last_name=user.last_name,username=user.username))
+                    await complete_referral(db,user.id)
                 screen.customer_registered=True
         return True
 
