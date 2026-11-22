@@ -25,7 +25,7 @@ jobs:
           docker compose -f compose.production.yaml up -d --build --wait --wait-timeout 150 miniapp
       - name: Verify migrations and served pages
         run: |
-          docker compose -f compose.production.yaml exec -T postgres psql -U nr_shop_user -d nr_shop -Atc 'SELECT version_num FROM alembic_version' | grep -Fx cf892de527bb
+          docker compose -f compose.production.yaml exec -T postgres psql -U nr_shop_user -d nr_shop -Atc 'SELECT version_num FROM alembic_version' | grep -Fx d09a3ef638cc
           docker compose -f compose.production.yaml exec -T miniapp python - <<'PY'
           from urllib.request import urlopen
           for page in ('/', '/shop.html', '/admin.html', '/representative.html'):
@@ -72,6 +72,38 @@ jobs:
               assert error.code==403
           else:
               raise AssertionError('Customer was given admin access')
+          PY
+      - name: Verify trial provisioning and retry with an isolated database
+        run: |
+          docker compose -f compose.production.yaml exec -T miniapp python - <<'PY'
+          import asyncio
+          from unittest.mock import AsyncMock,patch
+          from database.models import VPNPanel,VPNInbound,VPNTrialSettings,VPNTrialClaim
+          from database.session import async_session
+          from modules.vpn.trial import claim_trial
+          from sqlalchemy import func,select
+
+          async def main():
+              async with async_session.begin() as db:
+                  panel=VPNPanel(name='test',base_url='https://example.invalid/',username='test',encrypted_password='test')
+                  db.add(panel)
+                  await db.flush()
+                  inbound=VPNInbound(panel_id=panel.id,remote_inbound_id=17,protocol='vless')
+                  db.add(inbound)
+                  await db.flush()
+                  db.add(VPNTrialSettings(id=1,panel_id=panel.id,inbound_id=inbound.id,volume_gb=2,duration_hours=1,is_enabled=True))
+                  db.add(VPNTrialClaim(telegram_user_id=21,panel_id=panel.id,inbound_id=inbound.id))
+              delivery=AsyncMock(side_effect=[OSError('temporary outage'),'https://example.invalid/sub/ready'])
+              with patch('modules.vpn.trial.deliver_subscription',delivery):
+                  async with async_session() as db:
+                      assert (await claim_trial(db,21))[1]=='failed'
+                      claim,status=await claim_trial(db,21)
+                      assert status=='ready' and claim.volume_gb==2 and claim.subscription_url.endswith('/ready')
+                      assert (await claim_trial(db,21))[1]=='ready'
+                      assert await db.scalar(select(func.count(VPNTrialClaim.id)))==1
+              assert delivery.await_count==2
+              assert delivery.await_args_list[0].args[2:]==delivery.await_args_list[1].args[2:]
+          asyncio.run(main())
           PY
       - if: failure()
         run: docker compose -f compose.production.yaml logs postgres migrate miniapp

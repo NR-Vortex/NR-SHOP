@@ -84,6 +84,8 @@ class Product(Base):
         nullable=False
     )
 
+    vpn_volume_gb: Mapped[int | None] = mapped_column(Integer)
+
     # مدت اعتبار محصول به روز
     duration_days: Mapped[int | None] = mapped_column(
         Integer,

@@ -1,15 +1,17 @@
 from aiogram import F, Router
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message, InlineKeyboardButton, InlineKeyboardMarkup
-from sqlalchemy import select
+from sqlalchemy import delete, select
+from html import escape
 
-from database.models import VPNInbound, VPNPanel, VPNTrialSettings
+from database.models import Category, Product, ProductVPNInbound, VPNInbound, VPNPanel, VPNTrialSettings
 from database.session import async_session
 from modules.checkout.admin_review import get_admin_ids, is_admin
 from modules.vpn.panel.client import VPNPanelError
 from modules.vpn.panel.service import save_panel, sync_panel_inbounds
 from modules.vpn.panel.admin.keyboards import panel_admin_keyboard
 from modules.vpn.panel.admin.states import VPNPanelStates
+from modules.vpn.provisioning import SUPPORTED_PROTOCOLS
 from modules.vpn.trial import get_trial_settings, trial_statistics
 from modules.vpn.trial_keyboards import trial_admin_keyboard
 
@@ -202,6 +204,67 @@ async def panel_list(callback: CallbackQuery):
     text = "📡 <b>پنل‌های متصل</b>\n\n" + ("\n".join(f"• {p.name} — {p.connection_status}" for p in panels) or "پنلی ثبت نشده است.")
     await callback.answer()
     if isinstance(callback.message, Message): await callback.message.edit_text(text, reply_markup=panel_admin_keyboard())
+
+
+@router.callback_query(F.data == "vpnadmin:product_links")
+async def product_links(callback: CallbackQuery,state: FSMContext):
+    if not is_admin(callback.from_user.id):
+        await callback.answer("دسترسی غیرمجاز",show_alert=True)
+        return
+    async with async_session() as session:
+        products=(await session.scalars(select(Product).join(Category)
+            .where(Category.section=="vpn").order_by(Product.id).limit(30))).all()
+        inbounds=(await session.scalars(select(VPNInbound).join(VPNPanel)
+            .where(VPNInbound.enabled,VPNPanel.is_active,VPNInbound.protocol.in_(SUPPORTED_PROTOCOLS))
+            .order_by(VPNInbound.id).limit(30))).all()
+    await callback.answer()
+    if not isinstance(callback.message,Message):
+        return
+    if not products or not inbounds:
+        await callback.message.answer("برای تنظیم تحویل، باید بستهٔ VPN و ورودی فعال روی پنل داشته باشی.")
+        return
+    await state.set_state(VPNPanelStates.product_link)
+    package_rows="\n".join(f"{p.id} · {escape(p.name[:60])}" for p in products)
+    inbound_rows="\n".join(f"{i.id} · {escape(i.remark[:40] or i.protocol)}" for i in inbounds)
+    await callback.message.answer(
+        "شناسهٔ بسته، شناسهٔ ورودی و حجم به گیگابایت را با فاصله بفرست. "
+        "مثال <code>12 3 20</code>. لغو با /cancel.\n\n"
+        f"<b>بسته‌ها</b>\n{package_rows}\n\n<b>ورودی‌ها</b>\n{inbound_rows}"
+    )
+
+
+@router.message(VPNPanelStates.product_link)
+async def set_product_link(message: Message,state: FSMContext):
+    if not is_admin(message.from_user.id):
+        await state.clear()
+        return
+    text=(message.text or "").strip()
+    if text=="/cancel":
+        await state.clear()
+        await message.answer("تنظیم تحویل لغو شد.")
+        return
+    parts=text.split()
+    if len(parts)!=3 or not all(x.isdecimal() and 1<=len(x)<=9 for x in parts):
+        await message.answer("شناسهٔ بسته، شناسهٔ ورودی و حجم را به صورت سه عدد بفرست.")
+        return
+    product_id,inbound_id,volume=map(int,parts)
+    if not 0<volume<=999999:
+        await message.answer("حجم باید عددی بین ۱ تا ۹۹۹۹۹۹ گیگابایت باشد.")
+        return
+    async with async_session.begin() as session:
+        product=await session.scalar(select(Product).join(Category)
+            .where(Product.id==product_id,Category.section=="vpn").with_for_update(of=Product))
+        inbound=await session.scalar(select(VPNInbound).join(VPNPanel)
+            .where(VPNInbound.id==inbound_id,VPNInbound.enabled,VPNPanel.is_active,
+                   VPNInbound.protocol.in_(SUPPORTED_PROTOCOLS)))
+        if not product or not inbound or not product.duration_days:
+            await message.answer("بسته، مدت اعتبار آن یا ورودی فعال معتبر نیست.")
+            return
+        product.vpn_volume_gb=volume
+        await session.execute(delete(ProductVPNInbound).where(ProductVPNInbound.product_id==product.id))
+        session.add(ProductVPNInbound(product_id=product.id,inbound_id=inbound.id))
+    await state.clear()
+    await message.answer(f"بسته {product_id} به ورودی {inbound_id} وصل شد. حجم بسته {volume} گیگابایت است.",reply_markup=panel_admin_keyboard())
 
 
 @router.callback_query(F.data == "vpnadmin:inbounds")

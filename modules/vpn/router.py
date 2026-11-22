@@ -1,5 +1,6 @@
 from core.admin_settings import content_prefix
 from html import escape
+from datetime import datetime, timezone
 
 from aiogram import F, Router
 from aiogram.fsm.context import FSMContext
@@ -19,58 +20,56 @@ from modules.vpn.username import automatic_username, is_valid_username
 from modules.referral.service import referral_stats
 from modules.vpn.keyboards import vpn_referral_keyboard
 from urllib.parse import quote
-from modules.vpn.trial import claim_trial, get_trial_settings
+from modules.vpn.trial import claim_query, claim_trial, get_trial_settings, trial_available
+from modules.vpn.provisioning import linked_inbound, provision_vpn_order, ProvisioningError
 from modules.vpn.trial_keyboards import trial_customer_keyboard
 
 
 router = Router(name="vpn")
 
 
+def trial_message(claim):
+    if claim.expires_at<=datetime.now(timezone.utc):
+        return "مدت سرویس آزمایشی‌ات تمام شده. برای ادامه می‌تونی اشتراک بخری."
+    return (f"<b>اشتراک آزمایشی آماده است</b>\n\nحجم {claim.volume_gb} گیگابایت\n"
+            f"اعتبار تا {claim.expires_at:%Y-%m-%d %H:%M} UTC\n\n"
+            f"<code>{escape(claim.subscription_url)}</code>")
+
+
 @router.callback_query(F.data == "vpn:trial")
 async def vpn_trial(callback: CallbackQuery):
     async with async_session() as session:
-        settings = await get_trial_settings(session)
-        claimed = (await session.execute(select(VPNTrialClaim.id).where(
-            VPNTrialClaim.telegram_user_id == callback.from_user.id
-        ))).scalar_one_or_none() is not None
-    if claimed:
-        text = ("⚠️ <b>شما قبلاً اکانت تست خود را دریافت کرده‌اید.</b>\n\n"
-                "هر کاربر فقط یک مرتبه امکان دریافت اکانت تست دارد.\n\n"
-                "💎 برای استفاده از سرویس‌های بیشتر می‌توانید اشتراک خریداری کنید.")
-    elif not settings.is_enabled:
-        text = "🔴 اکانت تست رایگان در حال حاضر توسط مدیریت غیرفعال است."
+        settings=await get_trial_settings(session)
+        claim=await session.scalar(claim_query(callback.from_user.id))
+    ready=bool(claim and claim.subscription_url)
+    enabled=is_feature_enabled("vpn") and trial_available(settings)
+    if ready:
+        text=trial_message(claim)
+    elif enabled:
+        text=(f"<b>اشتراک آزمایشی</b>\n\n{settings.volume_gb} گیگابایت برای {settings.duration_hours} ساعت. "
+              "برای ساخت یا ادامهٔ همان درخواست، دکمهٔ دریافت را بزن.")
     else:
-        text = ("🕹️ <b>اکانت تست رایگان NR SHOP</b>\n\n"
-                "💎 شما می‌توانید یک مرتبه از سرویس آزمایشی VPN استفاده کنید.\n\n"
-                f"📦 حجم تست: {settings.volume_gb} گیگابایت\n"
-                f"📅 مدت اعتبار: {settings.duration_hours} ساعت\n\n"
-                "⚡️ این فرصت برای هر کاربر فقط یک مرتبه فعال است.\n\n"
-                "برای دریافت اکانت تست روی دکمه زیر بزنید.")
+        text="اشتراک آزمایشی فعلاً برای دریافت آماده نیست."
     await callback.answer()
-    if isinstance(callback.message, Message):
-        await callback.message.edit_text(
-            text, reply_markup=trial_customer_keyboard(settings.is_enabled, claimed)
-        )
+    if isinstance(callback.message,Message):
+        await callback.message.edit_text(text,reply_markup=trial_customer_keyboard(enabled,ready))
 
 
 @router.callback_query(F.data == "vpn:trial:claim")
 async def vpn_trial_claim(callback: CallbackQuery):
+    if not is_feature_enabled("vpn"):
+        await callback.answer("فروشگاه VPN غیرفعال است.",show_alert=True)
+        return
+    await callback.answer("در حال آماده‌سازی اشتراک…")
     async with async_session() as session:
-        claim, status = await claim_trial(session, callback.from_user.id)
-        settings = await get_trial_settings(session)
-    if status == "claimed":
-        await callback.answer("⚠️ شما قبلاً اکانت تست خود را دریافت کرده‌اید.", show_alert=True)
-        return
-    if status == "disabled":
-        await callback.answer("🔴 اکانت تست غیرفعال است.", show_alert=True)
-        return
-    await callback.answer("✅ درخواست اکانت تست ثبت شد.", show_alert=True)
-    if isinstance(callback.message, Message):
-        await callback.message.edit_text(
-            "✅ درخواست اکانت تست شما ثبت شد.\n\n"
-            "سرویس آزمایشی پس از آماده‌سازی توسط سیستم تحویل نمایش داده می‌شود.",
-            reply_markup=trial_customer_keyboard(settings.is_enabled, True),
-        )
+        claim,status=await claim_trial(session,callback.from_user.id)
+    text=trial_message(claim) if status=="ready" else {
+        "expired":"مدت درخواست آزمایشی قبلی تمام شده.",
+        "disabled":"تنظیمات اشتراک آزمایشی هنوز کامل نیست.",
+        "failed":"پنل لینک را تحویل نداد. دوباره تلاش کن. تلاش دوباره سهمیهٔ جدیدی مصرف نمی‌کند.",
+    }[status]
+    if isinstance(callback.message,Message):
+        await callback.message.edit_text(text,reply_markup=trial_customer_keyboard(status=="failed",status=="ready"))
 
 
 def vpn_text(name):
@@ -154,9 +153,15 @@ async def create_vpn_order(callback_or_message, state: FSMContext, username: str
     async with async_session() as session:
         duplicate = (await session.execute(select(VPNOrderDetails.id).join(Order).where(VPNOrderDetails.username == username, Order.status.not_in(["cancelled", "rejected"])).limit(1))).scalar_one_or_none()
         if duplicate: return None
+        product=await session.get(Product,product_id) if product_id else None
+        inbound=await linked_inbound(session,product_id) if product else None
+        if not product or not product.vpn_volume_gb or not product.duration_days or inbound is None:
+            return False
         try: order = await create_order(session, callback_or_message.from_user.id, product_id)
         except ProductUnavailableError: return False
-        detail = VPNOrderDetails(order_id=order.id, username=username, server_name="در انتظار تخصیص", volume="نامشخص")
+        detail = VPNOrderDetails(order_id=order.id,username=username,inbound_id=inbound.id,
+            server_name=(inbound.remark or f"Inbound {inbound.remote_inbound_id}")[:100],
+            volume=f"{product.vpn_volume_gb} گیگابایت")
         session.add(detail); await session.commit(); await session.refresh(order)
     await state.clear()
     return order, detail
@@ -388,10 +393,22 @@ async def vpn_subscription_link(callback: CallbackQuery):
         query = query.where(Order.id == int(order_number)) if len(parts) > 3 and parts[-2] == "order" else query.where(Order.order_number == order_number)
         result = await session.execute(query)
         row = result.first()
-    if not row or not row[1].subscription_url:
-        await callback.answer("لینک سرویس هنوز آماده نیست.", show_alert=True); return
-    await callback.answer()
-    await callback.message.answer(f"🔗 لینک اشتراک شما:\n{escape(row[1].subscription_url)}")
+        if not row or row[0].status not in {"paid","provisioning"}:
+            await callback.answer("سرویس قابل دریافت نیست.",show_alert=True)
+            return
+        detail=row[1]
+        if not detail.subscription_url:
+            await callback.answer("در حال دریافت سرویس…")
+            try:
+                detail=await provision_vpn_order(session,row[0].id)
+            except ProvisioningError:
+                if isinstance(callback.message,Message):
+                    await callback.message.answer("لینک هنوز آماده نیست. تنظیمات بسته یا وضعیت پنل را با پشتیبانی بررسی کن.")
+                return
+        else:
+            await callback.answer()
+        if isinstance(callback.message,Message):
+            await callback.message.answer(f"لینک اشتراک شما\n<code>{escape(detail.subscription_url)}</code>")
 
 
 @router.callback_query(F.data.startswith("vpn:qr:"))

@@ -15,6 +15,8 @@ class VPNOrderDetails(Base):
     inbound_id: Mapped[int | None] = mapped_column(ForeignKey("vpn_inbounds.id", ondelete="SET NULL"), nullable=True, index=True)
     provisioning_status: Mapped[str] = mapped_column(String(24), default="pending", server_default="pending", nullable=False, index=True)
     panel_client_id: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    subscription_id: Mapped[str | None] = mapped_column(String(32))
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     subscription_url: Mapped[str | None] = mapped_column(String(2048), nullable=True)
     provisioning_error: Mapped[str | None] = mapped_column(String(500), nullable=True)
     provisioned_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

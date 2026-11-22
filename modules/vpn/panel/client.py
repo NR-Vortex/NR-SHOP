@@ -1,6 +1,6 @@
 import json
 import os
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlsplit
 
 import httpx
 from cryptography.fernet import Fernet
@@ -58,6 +58,21 @@ class ThreeXUIClient:
         if payload.get("success") is False: raise VPNPanelError("3X-UI returned an error")
         return payload.get("obj") or []
 
+    async def subscription_base(self):
+        for path in ("panel/api/setting/defaultSettings","panel/setting/defaultSettings"):
+            response=await self.client.post(urljoin(self.base_url,path))
+            if response.status_code==404:
+                continue
+            response.raise_for_status()
+            payload=response.json().get("obj") or {}
+            url=payload.get("subURI")
+            if payload.get("subEnable") is False or not isinstance(url,str):
+                continue
+            parsed=urlsplit(url)
+            if parsed.scheme in {"https","http"} and parsed.hostname and not parsed.username and not parsed.password and not parsed.query and not parsed.fragment:
+                return url.rstrip("/")
+        raise VPNPanelConfigurationError("Subscription service has no usable URL")
+
     async def add_client(self, inbound_id: int, client: dict):
         """Create one client through the 3X-UI inbound API."""
         await self.login()
@@ -67,8 +82,16 @@ class ThreeXUIClient:
         )
         response.raise_for_status()
         payload = response.json()
-        if payload.get("success") is False: raise VPNPanelError("3X-UI rejected client creation")
+        if payload.get("success") is not True: raise VPNPanelError("3X-UI rejected client creation")
         return payload
+
+    async def update_client(self,inbound_id,client):
+        await self.login()
+        response=await self.client.post(urljoin(self.base_url,f"panel/api/inbounds/updateClient/{client['id']}"),
+            json={"id":inbound_id,"settings":json.dumps({"clients":[client]})})
+        response.raise_for_status()
+        if response.json().get("success") is not True:
+            raise VPNPanelError("3X-UI rejected client update")
 
 
 def sanitize_inbound(raw: dict) -> dict:
