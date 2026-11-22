@@ -26,7 +26,7 @@ def main_menu_keyboard():
     if url.startswith('https://'):
         buttons.append([InlineKeyboardButton(text='🛍 ورود به فروشگاه', web_app=WebAppInfo(url=urljoin(url,'shop.html')))])
         if is_feature_enabled('vps'):
-            buttons.append([InlineKeyboardButton(text='داشبورد نمایندگی', web_app=WebAppInfo(url=url))])
+            buttons.append([InlineKeyboardButton(text='داشبورد نمایندگی', web_app=WebAppInfo(url=urljoin(url,'representative.html')))])
 
     # دسته بندی های فروشگاه
     for key, title in CATEGORIES.items():

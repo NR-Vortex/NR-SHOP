@@ -17,6 +17,7 @@ jobs:
           BOT_TOKEN=123456:example
           POSTGRES_PASSWORD=local-ci-only
           COMPOSE_PROJECT_NAME=nr-shop-ci
+          ADMIN_IDS=1
           ENV
           mkdir .updates
           docker compose -f compose.production.yaml config --quiet
@@ -27,10 +28,10 @@ jobs:
           docker compose -f compose.production.yaml exec -T postgres psql -U nr_shop_user -d nr_shop -Atc 'SELECT version_num FROM alembic_version' | grep -Fx cf892de527bb
           docker compose -f compose.production.yaml exec -T miniapp python - <<'PY'
           from urllib.request import urlopen
-          for page in ('/', '/shop.html', '/admin.html'):
+          for page in ('/', '/shop.html', '/admin.html', '/representative.html'):
               with urlopen('http://127.0.0.1:8080' + page, timeout=5) as response:
                   assert response.status == 200 and b'NR SHOP' in response.read()
-          for asset, marker in (('/studio.css', b'.action-grid'), ('/studio.js', b'TELEGRAM_COLORS')):
+          for asset, marker in (('/studio.css', b'.action-grid'), ('/studio.js', b'TELEGRAM_COLORS'), ('/launch.js', b'nrTelegram')):
               with urlopen('http://127.0.0.1:8080' + asset, timeout=5) as response:
                   assert response.status == 200 and marker in response.read()
           PY
@@ -39,6 +40,39 @@ jobs:
             test -n "$container"
             test "$(docker inspect --format '{{len .HostConfig.PortBindings}}' "$container")" = 0
           done
+      - name: Verify independent authenticated customer and admin navigation
+        run: |
+          docker compose -f compose.production.yaml exec -T miniapp python - <<'PY'
+          import hashlib,hmac,json,os,time
+          from urllib.error import HTTPError
+          from urllib.parse import urlencode
+          from urllib.request import Request,urlopen
+          key=hmac.digest(b'WebAppData',os.environ['BOT_TOKEN'].encode(),'sha256')
+          def token(user_id):
+              data={'auth_date':str(int(time.time())),'user':json.dumps({'id':user_id,'first_name':'CI'})}
+              check='\n'.join(f'{key}={value}' for key,value in sorted(data.items()))
+              return urlencode(dict(data,hash=hmac.new(key,check.encode(),hashlib.sha256).hexdigest()))
+          def api(path,user_id=1,form=None):
+              req=Request('http://127.0.0.1:8080/api/'+path,headers={'Authorization':'tma '+token(user_id)},data=urlencode(form).encode() if form else None)
+              with urlopen(req,timeout=6) as response:
+                  return json.load(response)
+          admin=api('admin/screen')
+          shop=api('shop/screen')
+          assert admin['is_home'] and shop['is_home']
+          admin=api('admin/event',form={'action':'admin:section:users','revision':admin['revision']})
+          admin=api('admin/event',form={'action':'admin:users:search','revision':admin['revision']})
+          assert admin['input']
+          shop=api('shop/event',form={'action':'shop:orders','revision':shop['revision']})
+          assert not shop['input']
+          assert api('admin/screen')['input']
+          assert api('shop/screen',user_id=2)['is_home']
+          try:
+              api('admin/screen',user_id=2)
+          except HTTPError as error:
+              assert error.code==403
+          else:
+              raise AssertionError('Customer was given admin access')
+          PY
       - if: failure()
         run: docker compose -f compose.production.yaml logs postgres migrate miniapp
       - if: always()

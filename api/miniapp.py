@@ -22,13 +22,16 @@ INDEX = Path(__file__).resolve().parents[1] / "miniapp" / "index.html"
 
 
 async def identity(request):
-    raw = request.headers.get("Authorization", "").removeprefix("tma ")
+    authorization=request.headers.get("Authorization","")
+    if not authorization.startswith("tma ") or len(authorization)>8192:
+        raise web.HTTPUnauthorized()
+    raw=authorization[4:]
     try:
         verified = safe_parse_webapp_init_data(settings.BOT_TOKEN.get_secret_value(), raw)
         age = time.time() - verified.auth_date.replace(tzinfo=timezone.utc).timestamp()
         if not verified.user or not -30 <= age <= 3600:
             raise ValueError
-    except (TypeError, ValueError, KeyError):
+    except (TypeError, ValueError, KeyError, IndexError):
         raise web.HTTPUnauthorized()
     async with async_session() as session:
         blocked = await session.scalar(select(User.is_blocked).where(User.telegram_id == verified.user.id))
@@ -73,11 +76,16 @@ async def index(request):
     return web.FileResponse(INDEX)
 
 
+async def storefront(request):
+    return web.FileResponse(INDEX.with_name("admin.html"))
+
+
 def create_app():
     from api.admin_console import install
     app=web.Application(client_max_size=10*1024*1024)
     install(app,identity)
-    app.router.add_get("/",index)
+    app.router.add_get("/",storefront)
+    app.router.add_get("/representative.html",index)
     app.router.add_get("/api/dashboard",dashboard)
     app.router.add_post("/api/action/{key}",action)
     return app

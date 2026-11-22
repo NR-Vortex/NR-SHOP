@@ -21,7 +21,7 @@ const NAME_BY_ACTION = {
   "admin:section:texts": "متن‌های ربات", "admin:section:guides": "راهنماها",
   "admin:section:settings": "تنظیمات ربات", "admin:section:database": "دیتابیس و بکاپ",
   "updates:menu": "به‌روزرسانی", "webapp:/admin.html": "باز کردن مینی‌اپ مدیریت",
-  "webapp:/shop.html": "ورود به مینی‌اپ فروشگاه", "webapp:/": "مینی‌اپ نمایندگی",
+  "webapp:/shop.html": "ورود به مینی‌اپ فروشگاه", "webapp:/representative.html": "مینی‌اپ نمایندگی",
   "shop:category:vpn": "خرید VPN", "shop:category:ai": "اشتراک هوش مصنوعی",
   "shop:category:telegram": "خدمات تلگرام", "shop:orders": "محصولات من",
   "agency:bot": "ربات فروش نماینده", "agency:panel": "پنل نمایندگی",
@@ -31,7 +31,7 @@ const NAME_BY_ACTION = {
   "miniapp:account": "تب حساب", "miniapp:appearance": "تب ظاهر",
   "miniapp:save": "ذخیرهٔ تم", "miniapp:submit": "ارسال فرم", "miniapp:back": "بازگشت"
 };
-const shop = location.pathname.endsWith("/shop.html") || new URLSearchParams(location.search).has("shop");
+const shop = location.pathname === "/" || location.pathname.endsWith("/shop.html") || new URLSearchParams(location.search).has("shop");
 const mode = shop ? "shop" : "admin";
 const preview = location.protocol === "file:";
 const route = "api/" + mode + "/";
@@ -41,7 +41,7 @@ const buttonNames = new Map(Object.entries(NAME_BY_ACTION));
 const adminRoots = ["admin:finance:payments","admin:reports:sales","admin:section:users","support:admin:menu","admin:section:finance","admin:hub:shop","admin:hub:agency","admin:hub:content","admin:hub:system"];
 const shopRoots = ["shop:category:vpn","shop:category:ai","shop:orders","support:menu"];
 const layoutSample = ["admin:finance:payments","admin:section:users","admin:hub:agency","admin:hub:shop"];
-let telegram, screen, busy = false, blob, selectedKey;
+let telegram, auth, screen, busy = false, blob, selectedKey;
 let saved = {...DEFAULT}, draft = {...DEFAULT};
 
 function options(node, values, current) {
@@ -133,7 +133,8 @@ function drawButtons() {
   for (const item of screen.rows.flat()) {
     $("buttons").append(makeCard(item.key || item.action,item.text,() => {
       if (item.url) {
-        if (telegram) telegram.openLink(item.url);
+        if (new URL(item.url).origin === location.origin) location.assign(item.url);
+        else if (telegram?.openLink) telegram.openLink(item.url);
         else window.open(item.url,"_blank","noopener");
       } else sendEvent(item.action);
     }));
@@ -151,12 +152,16 @@ function themeTab(show) {
 }
 
 async function request(url, opts = {}) {
-  const res = await fetch(url,{...opts,headers:{Authorization:"tma "+telegram.initData,...opts.headers},cache:"no-store"});
-  if (!res.ok) throw Error({
+  const res = await fetch(url,{...opts,headers:{Authorization:"tma "+auth.initData,...opts.headers},cache:"no-store"});
+  if (!res.ok) {
+    const error = Error({
     403:"این بخش برای حساب شما در دسترس نیست.",
     401:"مینی‌اپ را دوباره از منوی ربات باز کن.",
     409:"صفحه تغییر کرده. گزینه را دوباره انتخاب کن."
   }[res.status] || "عملیات کامل نشد. دوباره امتحان کن.");
+    error.status=res.status;
+    throw error;
+  }
   return res;
 }
 
@@ -167,6 +172,8 @@ async function render(view) {
   }
   themeTab(false);
   $("notice").textContent = view.notice || "";
+  $("productNav").hidden = !view.shortcuts?.["shop:orders"];
+  $("supportNav").hidden = !view.shortcuts?.["support:menu"];
   $("caption").hidden = !!view.is_home;
   $("caption").textContent = view.caption || "";
   $("sectionTitle").textContent = view.is_home ? (shop ? "بخش‌های فروشگاه" : "دسترسی سریع") : "عملیات این بخش";
@@ -174,6 +181,7 @@ async function render(view) {
   $("value").hidden = !!view.password;
   $("secret").hidden = !view.password;
   $("upload").hidden = !view.upload;
+  $("value").placeholder = view.upload ? "متن همراه پیوست (اختیاری)" : "پاسخ را وارد کن";
   for (const id of ["value","secret","upload"]) $(id).value = "";
   $("media").replaceChildren();
   if (blob) URL.revokeObjectURL(blob);
@@ -211,8 +219,13 @@ async function sendEvent(action) {
     }
     await render(await (await request(route+"event",{method:"POST",body})).json());
   } catch (error) {
-    try { await refresh(); } catch {}
-    $("notice").textContent = error.message;
+    if (error.status===401) {
+      auth.clear();
+      await recovery(error.message);
+    } else {
+      try { await refresh(); } catch {}
+      $("notice").textContent = error.message;
+    }
   } finally { busy = false; }
 }
 
@@ -254,6 +267,25 @@ $("reset").onclick = () => { draft=clone(DEFAULT); apply(draft); };
 $("palette").onclick = $("shortcut").onclick = () => { themeTab(true);populateButtons();apply(draft); };
 $("home").onclick = () => { themeTab(false); draft=clone(saved); apply(draft); if (!preview) sendEvent("home"); };
 $("cancelForm").onclick = () => sendEvent("home");
+$("productNav").onclick = () => sendEvent("shop:orders");
+$("supportNav").onclick = () => sendEvent("support:menu");
+$("retry").onclick = () => location.reload();
+$("openSidebar").onclick = () => $("sidebar").showModal();
+$("closeSidebar").onclick = () => $("sidebar").close();
+$("sidebar").addEventListener("click",event=>{
+  if(event.target===$("sidebar")) $("sidebar").close();
+  const action=event.target.closest("[data-screen]")?.dataset.screen;
+  if(action){
+    $("sidebar").close();
+    $(action==="appearance"?"palette":"home").click();
+  }
+});
+for (const link of document.querySelectorAll("[data-jump]")) {
+  link.onclick=event=>{
+    event.preventDefault();
+    $(link.dataset.jump).scrollIntoView({behavior:"smooth",block:"start"});
+  };
+}
 $("form").onsubmit = event => { event.preventDefault(); sendEvent("input"); };
 $("save").onclick = async () => {
   try {
@@ -269,15 +301,35 @@ $("save").onclick = async () => {
   } catch(error) { $("notice").textContent=error.message; }
 };
 
+async function recovery(message) {
+  $("operations").hidden=true;
+  $("appearance").hidden=true;
+  $("dock").hidden=true;
+  $("recoveryText").textContent=message;
+  $("recovery").hidden=false;
+  try {
+    const response=await fetch("api/bot-link");
+    const {url}=await response.json();
+    if(/^https:\/\/t\.me\/[A-Za-z0-9_]+$/.test(url)){
+      $("botLink").href=url;
+      $("botLink").hidden=false;
+    }
+  } catch {}
+}
+
 async function start() {
   $("title").textContent=heading;
   $("summary").textContent=description;
   if (shop) {
     for (const id of ["palette","shortcut"]) $(id).hidden=true;
     $("home").textContent="خانهٔ فروشگاه";
+    $("sideAppearance").hidden=true;
+    $("sideShop").hidden=true;
   }
   if (preview) {
     document.querySelector(".brand").href="index.html";
+    $("sideShop").href="admin.html?shop";
+    $("sideRep").href="index.html";
     try { saved={...DEFAULT,...JSON.parse(localStorage.getItem("nr-preview-theme")||"{}")}; } catch {}
     draft=clone(saved);
     $("session").textContent="پیش‌نمایش";
@@ -286,24 +338,18 @@ async function start() {
     return;
   }
   try {
-    await new Promise((resolve,reject) => {
-      const sdk=document.createElement("script");
-      sdk.src="https://telegram.org/js/telegram-web-app.js";
-      sdk.onload=resolve;
-      sdk.onerror=()=>reject(Error("اتصال به تلگرام برقرار نشد."));
-      document.head.append(sdk);
-    });
-    telegram=window.Telegram.WebApp;
-    telegram.ready(); telegram.expand();
-    if (!telegram.initData) throw Error("مینی‌اپ را از منوی ربات باز کن.");
+    auth=await window.nrTelegram();
+    telegram=auth.sdk;
+    if(!auth.initData) throw Error(shop?"برای خرید، ربات را در تلگرام باز کن و «ورود به فروشگاه» را بزن.":"برای مدیریت، در تلگرام /admin را بفرست و «باز کردن مینی‌اپ مدیریت» را بزن.");
     await refresh();
+    if (shop) request("api/access").then(r=>r.json()).then(role=>{$("sideAdmin").hidden=!role.admin}).catch(()=>{});
     $("session").textContent=shop?"فروشگاه مشتری":"پنل ادمین";
     if (!shop && new URLSearchParams(location.search).get("view")==="appearance") $("palette").click();
-    telegram.BackButton.show();
-    telegram.BackButton.onClick(()=>$("home").click());
+    telegram?.BackButton?.show();
+    telegram?.BackButton?.onClick(()=>$("home").click());
   } catch(error) {
-    $("notice").textContent=error.message;
-    $("palette").disabled=$("shortcut").disabled=true;
+    if(error.status===401) auth?.clear();
+    await recovery(error.message);
   }
 }
 start();

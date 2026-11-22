@@ -10,6 +10,8 @@ from pathlib import Path
 
 from aiohttp import web
 from aiogram.enums import ParseMode
+from aiogram.fsm.middleware import FSMContextMiddleware
+from aiogram.fsm.storage.memory import SimpleEventIsolation
 from aiogram.client.default import DefaultBotProperties
 from aiogram import Bot, Dispatcher
 from aiogram.client.session.aiohttp import AiohttpSession
@@ -17,6 +19,7 @@ from aiogram.types import BufferedInputFile, Message, MessageId, Update, User
 
 from core.button_theme import button_key, theme, save_theme, storefront_theme
 from core.config import settings
+from core.features import is_feature_enabled
 from core.loader import register_routers
 from modules.admin.keyboards import admin_dashboard_keyboard
 from modules.shop.keyboards import main_menu_keyboard
@@ -24,6 +27,7 @@ from modules.force_join.keyboards import join_keyboard
 from modules.force_join.service import MembershipCheckError,get_missing_channels
 from modules.users.service import upsert_user
 from database.session import async_session
+from database.models import User as Account
 
 UPLOAD_STATES = {
     "SupportStates:waiting_admin_reply",
@@ -34,6 +38,28 @@ UPLOAD_STATES = {
 from modules.checkout.admin_review import is_admin
 
 current=ContextVar("admin_web_view",default=None)
+
+
+class WebFSM(FSMContextMiddleware):
+    def get_context(self,bot,chat_id,user_id,thread_id=None,business_connection_id=None,destiny="default"):
+        view=current.get()
+        if view:
+            destiny=f"web:{view.mode}"
+        return super().get_context(bot,chat_id,user_id,thread_id,business_connection_id,destiny)
+
+
+def state_for(dispatcher,bot,view):
+    return dispatcher.fsm.get_context(bot=bot,chat_id=view.uid,user_id=view.uid,destiny=f"web:{view.mode}")
+
+
+def shop_shortcuts():
+    return {
+        "shop:orders": is_feature_enabled("orders"),
+        "shop:category:vpn": is_feature_enabled("vpn"),
+        "shop:category:ai": is_feature_enabled("ai"),
+        "support:menu": is_feature_enabled("support"),
+    }
+
 
 
 def plain(value):
@@ -50,6 +76,7 @@ class Screen:
 
     def reset(self):
         self.is_home=True
+        self.join_required=False
         self.caption="مدیریت فروشگاه" if self.mode=="admin" else "به NR SHOP خوش اومدی. سرویس‌ت رو انتخاب کن یا سفارش‌هات رو پیگیری کن."
         self.markup=admin_dashboard_keyboard() if self.mode=="admin" else main_menu_keyboard()
         self.media.clear()
@@ -105,7 +132,9 @@ async def present(make_request,bot,method):
 
 
 async def lifecycle(app):
-    dispatcher=Dispatcher()
+    dispatcher=Dispatcher(disable_fsm=True)
+    dispatcher.fsm=WebFSM(dispatcher.storage,SimpleEventIsolation())
+    dispatcher.update.outer_middleware(dispatcher.fsm)
     register_routers(dispatcher)
     bot=Bot(settings.BOT_TOKEN.get_secret_value(),session=AiohttpSession(proxy=settings.BOT_PROXY),
         default=DefaultBotProperties(parse_mode=ParseMode.HTML))
@@ -114,7 +143,7 @@ async def lifecycle(app):
     try:
         yield
     finally:
-        await dispatcher.storage.close()
+        await dispatcher.fsm.close()
         await bot.session.close()
 
 
@@ -124,41 +153,43 @@ def install(app,identity):
         if mode=="admin" and not is_admin(user.id):
             raise web.HTTPForbidden()
         dp,bot,screens=app["console"]
-        return user,dp,bot,screens.setdefault(user.id,Screen(user.id,mode))
+        return user,dp,bot,screens.setdefault((user.id,mode),Screen(user.id,mode))
 
     async def payload(dp,bot,screen):
-        state=dp.fsm.get_context(bot=bot,chat_id=screen.uid,user_id=screen.uid)
+        state=state_for(dp,bot,screen)
         step=await state.get_state()
         return web.json_response(dict(caption=screen.caption,is_home=screen.is_home,rows=screen.rows(),notice=screen.notice,media=screen.file,
             revision=screen.revision,input=bool(step),password="password" in str(step).lower(),
-            upload=step in UPLOAD_STATES,theme=theme() if screen.mode=="admin" else storefront_theme()),headers={"Cache-Control":"no-store"})
+            upload=step in UPLOAD_STATES,shortcuts=shop_shortcuts() if screen.mode=="shop" and not screen.join_required else {},theme=theme() if screen.mode=="admin" else storefront_theme()),headers={"Cache-Control":"no-store"})
 
     async def access(request):
         user=await identity(request)
         return web.json_response({'admin':is_admin(user.id)},headers={'Cache-Control':'no-store'})
 
     async def activate(dp,bot,screen,user,mode):
-        state=dp.fsm.get_context(bot=bot,chat_id=user.id,user_id=user.id)
-        if screen.mode!=mode:
-            await state.clear()
-            screen.mode=mode
-            screen.reset()
+        state=state_for(dp,bot,screen)
         if mode=="shop":
             try:
                 missing=await get_missing_channels(bot,user.id)
             except MembershipCheckError:
                 raise web.HTTPServiceUnavailable()
             if missing:
-                await state.clear()
-                screen.reset()
-                screen.caption="برای ورود، ابتدا عضو کانال شوید و دوباره بررسی کنید."
+                if not screen.join_required:
+                    await state.clear()
+                    screen.reset()
+                screen.join_required=True
+                screen.is_home=False
+                screen.caption="برای ورود، در کانال‌های زیر عضو شو و «بررسی عضویت» را بزن."
                 screen.markup=join_keyboard()
                 return False
-            if screen.caption.startswith("برای ورود،"):
+            if screen.join_required:
                 screen.reset()
             if not getattr(screen,"customer_registered",False):
                 async with async_session() as db:
-                    await upsert_user(db,User(id=user.id,is_bot=False,first_name=user.first_name,last_name=user.last_name,username=user.username))
+                    from sqlalchemy import select
+                    exists=await db.scalar(select(Account.id).where(Account.telegram_id==user.id))
+                    if exists is None:
+                        await upsert_user(db,User(id=user.id,is_bot=False,first_name=user.first_name,last_name=user.last_name,username=user.username))
                 screen.customer_registered=True
         return True
 
@@ -173,15 +204,13 @@ def install(app,identity):
         mode=request.match_info.get("mode","admin")
         user,dp,bot,v=await authorized(request,mode)
         async with v.lock:
-            if v.mode!=mode:
-                raise web.HTTPConflict()
             if not await activate(dp,bot,v,user,mode):
                 return await payload(dp,bot,v)
             body=await request.post()
             if body.get("revision")!=v.revision:
                 raise web.HTTPConflict()
             action=body.get("action","")
-            state=dp.fsm.get_context(bot=bot,chat_id=user.id,user_id=user.id)
+            state=state_for(dp,bot,v)
             v.revision=secrets.token_hex(12)
             v.notice=""
             if action=="home":
@@ -217,7 +246,9 @@ def install(app,identity):
                     v.input_text=value
                     msg["text"]=value
                 update["message"]={**msg,"from":sender}
-            elif action in {b.get("action") for row in v.rows() for b in row}:
+            elif action in {b.get("action") for row in v.rows() for b in row} or (mode=="shop" and shop_shortcuts().get(action)):
+                if action in shop_shortcuts() or action=="shop:home":
+                    await state.clear()
                 update["callback_query"]={"id":secrets.token_hex(12),"from":sender,"chat_instance":"admin-web","data":action,
                     "message":{**msg,"text":v.caption or " "}}
             else:
@@ -263,14 +294,20 @@ def install(app,identity):
     async def public_theme(request):
         return web.json_response(storefront_theme(),headers={"Cache-Control":"no-store"})
 
+    async def bot_link(request):
+        _,bot,_=app["console"]
+        profile=await bot.me()
+        return web.json_response({"url":f"https://t.me/{profile.username}"},headers={"Cache-Control":"public,max-age=300"})
+
     app.cleanup_ctx.append(lifecycle)
-    app.router.add_get(r"/{file:studio\.css|studio\.js}",assets)
+    app.router.add_get(r"/{file:studio\.css|studio\.js|launch\.js}",assets)
     app.router.add_get("/admin.html",page)
     app.router.add_get("/shop.html",page)
     app.router.add_get("/api/{mode:shop}/screen",screen)
     app.router.add_post("/api/{mode:shop}/event",event)
     app.router.add_get("/api/{mode:shop}/media/{key}",media)
     app.router.add_get("/api/access",access)
+    app.router.add_get("/api/bot-link",bot_link)
     app.router.add_get("/api/admin/screen",screen)
     app.router.add_post("/api/admin/event",event)
     app.router.add_get("/api/admin/media/{key}",media)

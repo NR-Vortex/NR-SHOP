@@ -372,10 +372,10 @@ async def broadcast_send(message: Message, state: FSMContext):
 @router.callback_query(F.data.startswith("admin:settings:feature:"))
 async def feature_toggle(callback: CallbackQuery):
     if not is_admin(callback.from_user.id): await callback.answer("دسترسی غیرمجاز", show_alert=True); return
-    from core.features import FEATURES, set_feature
+    from core.features import FEATURES, is_feature_enabled, set_feature
     feature = callback.data.rsplit(":", 1)[-1]
     if feature not in FEATURES: await callback.answer("قابلیت نامعتبر است.", show_alert=True); return
-    set_feature(feature, not FEATURES[feature])
+    set_feature(feature, not is_feature_enabled(feature))
     await callback.answer("فعال شد." if FEATURES[feature] else "غیرفعال شد.", show_alert=True)
     from modules.admin.keyboards import admin_settings_keyboard
     await callback.message.edit_reply_markup(reply_markup=admin_settings_keyboard())

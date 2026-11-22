@@ -17,7 +17,10 @@ FEATURES = {
 }
 
 
-for key, default in FEATURES.items():
+DEFAULT_FEATURES = FEATURES.copy()
+
+
+for key, default in DEFAULT_FEATURES.items():
     FEATURES[key] = read_setting('feature.' + key, str(int(default))) == '1'
 
 
@@ -26,7 +29,11 @@ def is_feature_enabled(feature: str) -> bool:
     Check whether a feature is enabled.
     """
 
-    return FEATURES.get(feature, False)
+    if feature not in DEFAULT_FEATURES:
+        return False
+    enabled = read_setting("feature." + feature, str(int(DEFAULT_FEATURES[feature]))) == "1"
+    FEATURES[feature] = enabled
+    return enabled
 
 
 def set_feature(feature: str, status: bool):

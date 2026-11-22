@@ -6,13 +6,14 @@
 <meta name="theme-color" content="#101019">
 <title>NR SHOP</title>
 <link rel="stylesheet" href="studio.css">
+<script src="launch.js" defer></script>
 <script src="studio.js" defer></script>
 </head>
 <body>
 <main>
   <header class="masthead">
     <a class="brand" href="./" aria-label="پنل نمایندگی"><span class="brand-mark">N</span><strong dir="ltr">NR SHOP</strong></a>
-    <span id="session">مدیریت</span>
+    <div class="head-actions"><span id="session">مدیریت</span><button id="openSidebar" type="button" aria-haspopup="dialog" aria-label="باز کردن منو">☰</button></div>
   </header>
   <section id="intro" class="intro">
     <div class="intro-art" aria-hidden="true"><i></i><i></i><i></i></div>
@@ -20,12 +21,17 @@
     <h1 id="title">داشبورد مدیریت</h1>
     <p id="summary">فروش، مشتری‌ها و نمایندگی را از همین‌جا مدیریت کن.</p>
   </section>
+  <section id="recovery" class="surface" hidden>
+    <h2 id="recoveryTitle">ورود به NR SHOP</h2><p id="recoveryText"></p>
+    <div class="bar"><a class="btn primary" id="botLink" hidden>باز کردن ربات در تلگرام</a><button id="retry" type="button">تلاش دوباره</button></div>
+  </section>
+  <p id="notice" class="notice" role="status"></p>
   <section id="operations" aria-labelledby="sectionTitle">
     <div class="section-head"><h2 id="sectionTitle">دسترسی سریع</h2><button id="shortcut" type="button" class="text-button">تنظیم چیدمان</button></div>
     <div id="screenCard" class="surface screen">
       <p id="caption" class="body" hidden></p>
       <div id="media"></div>
-      <div id="buttons" class="action-grid"></div>
+      <div id="buttons" class="action-grid" aria-live="polite"></div>
       <form id="form" hidden>
         <label for="value">متن یا مقدار</label>
         <textarea id="value" rows="3"></textarea>
@@ -37,7 +43,12 @@
   </section>
 
   <section id="appearance" hidden aria-label="تنظیمات ظاهر">
-    <div class="surface setting">
+    <nav class="settings-jumps" aria-label="بخش‌های تنظیمات">
+      <a href="#layoutSection" data-jump="layoutSection">چیدمان</a>
+      <a href="#paletteSection" data-jump="paletteSection">پالت رنگ</a>
+      <a href="#buttonSection" data-jump="buttonSection">هر دکمه</a>
+    </nav>
+    <div class="surface setting" id="layoutSection">
       <div class="section-head"><h2>مدل چیدمان</h2></div>
       <label for="layout">چیدمان مینی‌اپ</label>
       <select id="layout"></select>
@@ -48,7 +59,7 @@
       <div class="preview-label">پیش‌نمایش چیدمان ربات</div>
       <div id="chatPreview" class="action-grid layout-preview"></div>
     </div>
-    <div class="surface setting">
+    <div class="surface setting" id="paletteSection">
       <h2>تم مینی‌اپ</h2>
       <div id="presets" class="presets"></div>
       <div class="pair">
@@ -60,7 +71,7 @@
       <label for="native">رنگ پیش‌فرض دکمه‌ها در چت تلگرام</label>
       <select id="native"></select>
     </div>
-    <div class="surface setting">
+    <div class="surface setting" id="buttonSection">
       <h2>رنگ هر دکمه</h2>
       <p class="muted">دکمه را از فهرست انتخاب کن. با باز کردن بخش‌های دیگر، دکمه‌های آن بخش هم به فهرست اضافه می‌شوند.</p>
       <label for="buttonSearch">جستجوی دکمه</label>
@@ -75,11 +86,21 @@
     </div>
     <div class="savebar"><button class="primary" id="save">ذخیرهٔ تنظیمات</button><button id="reset">تم اولیه</button></div>
   </section>
-  <p id="notice" class="notice" role="status"></p>
 </main>
 <nav aria-label="منوی اصلی" id="dock">
   <button id="home" aria-current="page"><span aria-hidden="true">⌂</span> داشبورد</button>
+  <button id="productNav" hidden>محصولات من</button><button id="supportNav" hidden>پشتیبانی</button>
   <button id="palette"><span aria-hidden="true">◈</span> ظاهر و چیدمان</button>
 </nav>
+<dialog id="sidebar" class="drawer" aria-label="ناوبری NR SHOP">
+  <div class="drawer-head"><strong dir="ltr">NR SHOP</strong><button id="closeSidebar" type="button" aria-label="بستن منو">×</button></div>
+  <div class="drawer-list">
+    <button data-screen="home" type="button">داشبورد</button>
+    <button data-screen="appearance" id="sideAppearance" type="button">ظاهر و چیدمان</button>
+    <a href="shop.html" id="sideShop">فروشگاه مشتری</a>
+    <a href="admin.html" id="sideAdmin" hidden>پنل مدیریت</a>
+    <a href="representative.html" id="sideRep">پنل نمایندگی</a>
+  </div>
+</dialog>
 </body>
 </html>
