@@ -10,6 +10,7 @@ from pathlib import Path
 
 from aiohttp import web
 from aiogram.enums import ParseMode
+from aiogram.dispatcher.event.bases import UNHANDLED
 from aiogram.fsm.middleware import FSMContextMiddleware
 from aiogram.fsm.storage.memory import SimpleEventIsolation
 from aiogram.client.default import DefaultBotProperties
@@ -41,11 +42,11 @@ current=ContextVar("admin_web_view",default=None)
 
 
 class WebFSM(FSMContextMiddleware):
-    def get_context(self,bot,chat_id,user_id,thread_id=None,business_connection_id=None,destiny="default"):
+    def get_context(self, *args, destiny="default", **kwargs):
         view=current.get()
         if view:
             destiny=f"web:{view.mode}"
-        return super().get_context(bot,chat_id,user_id,thread_id,business_connection_id,destiny)
+        return super().get_context(*args,destiny=destiny,**kwargs)
 
 
 def state_for(dispatcher,bot,view):
@@ -255,7 +256,9 @@ def install(app,identity):
                 raise web.HTTPBadRequest()
             token=current.set(v)
             try:
-                await dp.feed_update(bot,Update.model_validate(update,context={"bot":bot}))
+                result=await dp.feed_update(bot,Update.model_validate(update,context={"bot":bot}))
+                if result is UNHANDLED:
+                    v.notice="این پاسخ برای مرحلهٔ فعلی قابل استفاده نیست. متن راهنما را بررسی کن یا به خانه برگرد."
             finally:
                 current.reset(token)
                 v.input_text=None
