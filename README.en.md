@@ -18,6 +18,17 @@ A self-hosted Telegram shop for VPN subscriptions and digital products, with a c
 
 ## Install on Linux
 
+On Ubuntu 26.04, install the Docker prerequisites:
+
+```bash
+sudo apt-get update
+sudo apt-get install -y docker.io docker-compose-v2 curl openssl python3
+sudo systemctl enable --now docker
+docker compose version
+```
+
+Run the installer as a Docker-enabled user. Leave the domain blank for bot-only mode. Compose publishes neither web nor database ports in that mode.
+
 Install Docker Engine with Compose v2, curl, OpenSSL, and Python 3. Keep your BotFather token and numeric Telegram admin ID ready.
 
 ```bash

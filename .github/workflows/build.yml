@@ -5,11 +5,35 @@ on:
 permissions:
   contents: read
 jobs:
-  build:
+  compose:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - run: bash -n install.sh && bash -n scripts/enable-updates.sh
       - run: python3 -m py_compile scripts/update_host.py core/releases.py
-      - run: docker build -t nr-shop:ci .
-      - run: docker run --rm -e BOT_TOKEN=123456:example -e POSTGRES_PASSWORD=example nr-shop:ci python -c 'from api.miniapp import create_app; create_app()'
+      - name: Start a fresh database and Mini App
+        run: |
+          cat > .env <<'ENV'
+          BOT_TOKEN=123456:example
+          POSTGRES_PASSWORD=local-ci-only
+          COMPOSE_PROJECT_NAME=nr-shop-ci
+          ENV
+          mkdir .updates
+          docker compose -f compose.production.yaml config --quiet
+          docker compose -f compose.production.yaml --profile https config --quiet
+          docker compose -f compose.production.yaml up -d --build --wait --wait-timeout 150 miniapp
+      - name: Verify migrations and served pages
+        run: |
+          docker compose -f compose.production.yaml exec -T postgres psql -U nr_shop_user -d nr_shop -Atc 'SELECT version_num FROM alembic_version' | grep -Fx cf892de527bb
+          docker compose -f compose.production.yaml exec -T miniapp python - <<'PY'
+          from urllib.request import urlopen
+          for page in ('/', '/shop.html', '/admin.html'):
+              with urlopen('http://127.0.0.1:8080' + page, timeout=5) as response:
+                  assert response.status == 200 and b'NR SHOP' in response.read()
+          PY
+          test -z "$(docker compose -f compose.production.yaml port postgres 5432 2>/dev/null || true)"
+          test -z "$(docker compose -f compose.production.yaml port miniapp 8080 2>/dev/null || true)"
+      - if: failure()
+        run: docker compose -f compose.production.yaml logs postgres migrate miniapp
+      - if: always()
+        run: docker compose -f compose.production.yaml down -v

@@ -61,6 +61,11 @@ services:
     depends_on:
       migrate:
         condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "python", "-c", "from urllib.request import urlopen; urlopen('http://127.0.0.1:8080/', timeout=3).close()"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
   https:
     image: caddy:2
     profiles: ["https"]
@@ -73,7 +78,9 @@ services:
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
-    depends_on: [miniapp]
+    depends_on:
+      miniapp:
+        condition: service_healthy
 
 volumes:
   postgres_data:

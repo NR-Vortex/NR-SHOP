@@ -20,6 +20,17 @@ NR SHOP یک فروشگاه خودمیزبان تلگرام برای فروش ا
 
 ## نصب روی لینوکس
 
+روی Ubuntu 26.04 می‌توانی پیش‌نیازهای Docker را با این دستورها نصب کنی:
+
+```bash
+sudo apt-get update
+sudo apt-get install -y docker.io docker-compose-v2 curl openssl python3
+sudo systemctl enable --now docker
+docker compose version
+```
+
+نصاب را از حسابی اجرا کن که دسترسی Docker دارد. برای اجرا روی سرور بدون دامنه، پرسش دامنه را خالی بگذار. Compose در این حالت پورت عمومی وب یا دیتابیس باز نمی‌کند.
+
 روی سرور به Docker Engine، افزونه Docker Compose، curl، OpenSSL و Python 3 نیاز داری. توکن را از BotFather بگیر و شناسه عددی مدیر را آماده کن.
 
 ```bash
