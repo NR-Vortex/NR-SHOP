@@ -45,16 +45,21 @@ async def dashboard(request):
     bot = panel_account(user.id)
     if not bot:
         raise web.HTTPForbidden()
+    before = request.query.get("before")
+    if before is not None and not (before.isascii() and before.isdecimal() and len(before) <= 12):
+        raise web.HTTPBadRequest()
+    params = {"owner":user.id, "bot":bot[0], "before":int(before) if before else 10**12}
     async with async_session() as session:
         wallet = await session.scalar(select(Wallet.balance).where(Wallet.telegram_user_id == user.id))
-        volume = 0
-        rows = []
-        if bot:
-            params = {"owner":user.id,"bot":bot[0]}
-            volume = await session.scalar(text("SELECT balance_gb FROM agency_volume WHERE owner_id=:owner AND bot_id=:bot"),params)
-            rows = (await session.execute(text("SELECT customer,gb,delivered FROM agency_services WHERE bot_id=:bot ORDER BY split_part(reference,':',3)::bigint DESC LIMIT 50"),params)).all()
-    return web.json_response(dict(name=user.first_name,bot=bot[1] if bot else None,wallet=wallet or 0,volume=volume or 0,
-        price=int(read_setting("agency_price_gb","0")),services=[dict(customer=str(c),gb=g,delivered=d) for c,g,d in rows]),
+        volume = await session.scalar(text("SELECT balance_gb FROM agency_volume WHERE owner_id=:owner AND bot_id=:bot"),params)
+        rows = (await session.execute(text("""
+            SELECT split_part(reference,':',3)::bigint AS id, customer, gb, delivered
+            FROM agency_services WHERE bot_id=:bot AND split_part(reference,':',3)::bigint < :before
+            ORDER BY id DESC LIMIT 51
+        """),params)).all()
+    return web.json_response(dict(name=user.first_name,bot=bot[1],wallet=wallet or 0,volume=volume or 0,
+        price=int(read_setting("agency_price_gb","0")),next=str(rows[49].id) if len(rows)>50 else None,
+        services=[dict(id=str(i),customer=str(c),gb=g,delivered=d) for i,c,g,d in rows[:50]]),
         headers={"Cache-Control":"no-store"})
 
 

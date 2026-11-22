@@ -1,60 +1,34 @@
 <!doctype html>
-<html lang="fa" dir="rtl"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#101310"><title>پنل نمایندگی NR SHOP</title>
-<style>
-[hidden]{display:none!important}
-*{box-sizing:border-box}body{margin:0;background:#101310;color:#f4f4ea;font:15px/1.7 Tahoma,Arial,sans-serif}main{max-width:720px;margin:auto;padding:22px 20px 100px}header,.row,.title,nav,.item{display:flex;align-items:center;justify-content:space-between;gap:12px}header{direction:ltr;border-bottom:1px solid #363b32;padding-bottom:16px}header b{font:900 20px Arial;letter-spacing:-1px}header b i{color:#c6fa66}small,.muted{color:#acb4a6}.intro{margin:27px 0 15px}.intro h1{font-size:clamp(25px,5vw,37px);margin:0}.hero{position:relative;isolation:isolate;overflow:hidden;border-radius:23px;background:#c7ef7c;color:#142815;padding:24px;min-height:210px}.hero canvas{position:absolute;left:0;bottom:0;width:52%;height:100%;z-index:-1}.number{font:700 clamp(42px,8vw,64px) Tahoma;line-height:1.3}.hero p{margin:0}.hero button{margin-top:16px;background:#1d3021;color:white}button{font:inherit;font-weight:600;border:0;border-radius:12px;cursor:pointer;padding:8px 16px}button:focus-visible,input:focus-visible{outline:3px solid #78aaff}.cards{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0 24px}.card,.panel{border:1px solid #373d33;background:#1b201b;border-radius:16px;padding:15px}.card strong{display:block;font-size:19px}.card small{display:block}.title h2{font-size:19px}.link{color:#cdfa83;background:none;padding:5px}.item{border-bottom:1px solid #333a30;padding:12px 0}.item:last-child{border:0}.item strong,.item small{display:block}.status{font-size:12px;color:#cced9e}.icon{border-radius:10px;background:#303a2a;padding:6px 12px;color:#b6e97a;font:bold 19px monospace}.start{justify-content:flex-start}.panel p{margin:6px 0}.primary{background:#cbf582;color:#152112}.filters{display:flex;gap:6px;margin:12px 0}.filters button,nav button{background:transparent;color:#b4bcb0}.filters .selected,nav .selected{color:#d2f99c;background:#323f2d}nav{position:fixed;bottom:12px;bottom:max(12px,env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);background:#222920;border:1px solid #40503c;border-radius:18px;padding:6px;width:min(450px,92%);box-shadow:0 8px 30px #070a07}nav button{flex:1;font-size:14px}.demo{color:#cbe5ad;font-size:12px}dialog{width:min(390px,90%);background:#20271e;color:white;border:1px solid #516446;border-radius:18px;padding:22px}dialog::backdrop{background:#0009}input{border:1px solid #677b59;border-radius:10px;font:inherit;background:#151b14;color:white;width:100%;padding:10px}dialog .row{margin-top:16px}button:disabled{opacity:.6}.empty{color:#bac3b6;padding:12px 0}@media(max-width:380px){main{padding-inline:12px}.hero{padding:18px}.card{padding:10px}}
-.primary,.hero button{background:var(--button-primary,#cbf582);color:var(--primary-ink,#152112)}nav button.selected,.filters button.selected,#dismiss{background:var(--button-secondary,#323f2d);color:var(--secondary-ink,#fff)}
-body{background:var(--app-bg,#101019);color:var(--app-ink,#f1eef5)}.card,.panel,dialog,nav{background:var(--app-surface,#191927);color:var(--card-ink,#eee9f1);border-color:color-mix(in srgb,var(--card-ink,#eee9f1) 20%,transparent)}.hero{background:linear-gradient(135deg,var(--button-primary,#e9c88e),color-mix(in srgb,var(--button-primary,#e9c88e) 86%,#fff));color:var(--primary-ink,#21160d)}.hero button{background:var(--button-secondary,#252335);color:var(--secondary-ink,#fff)}.hero canvas{opacity:.55}header b i,.link{color:var(--button-primary,#e9c88e)}nav button,small,.muted{color:inherit;opacity:.8}nav button.selected{opacity:1}.card,.hero,.panel{border-radius:20px}body[data-layout=list] .cards{grid-template-columns:1fr}body[data-layout=compact] .card{padding:8px 10px}body[data-layout=feature] .cards .card:first-child{grid-column:1/-1}body[data-layout=feature] .cards .card:last-child{grid-column:1/-1}
-</style>
-
-<main><header><b>NR<i>/</i>SHOP</b><span id="mode" class="demo" dir="rtl">پیش‌نمایش</span></header>
-<a id="shopEntry" href="shop.html" style="display:inline-block;margin-top:16px;color:inherit">فروشگاه مشتری ‹</a><a id="adminEntry" hidden href="admin.html" style="display:inline-block;margin-top:16px;color:inherit">مدیریت فروشگاه و رنگ دکمه‌ها ‹</a><div class="intro"><small id="hello">پنل نمایندگی</small><h1 id="heading">داشبورد نمایندگی</h1></div>
-<section id="home"><div class="hero"><canvas aria-hidden="true"></canvas><p>حجم قابل تخصیص</p><strong class="number" id="volume">—</strong> گیگابایت<br><button data-act="buy">＋ خرید حجم</button></div>
-<div class="cards"><div class="card"><small>موجودی کیف پول</small><strong id="wallet">—</strong></div><div class="card"><small>حساب نمایندگی</small><strong id="bot" dir="auto">—</strong></div></div>
-<div class="title"><h2>آخرین سرویس‌ها</h2><button class="link" data-tab="services">مشاهده همه ‹</button></div><div class="panel" id="recent"></div></section>
-<section id="services" hidden><div class="filters" role="group" aria-label="وضعیت سرویس"><button data-filter="all">همه</button><button data-filter="done">تحویل‌شده</button><button data-filter="wait">در انتظار</button></div><div id="list" class="panel"></div></section>
-<section id="account" hidden><div class="panel"><h2>تنظیمات نمایندگی</h2><p id="accountBot"></p><p id="rate" class="muted"></p><button class="primary" data-act="connect">ساخت کانفیگ</button></div></section>
-<p id="notice" role="status"></p></main>
-<nav aria-label="ناوبری اصلی"><button data-tab="home">داشبورد</button><button data-tab="services">سرویس‌ها</button><button data-tab="account">حساب من</button></nav>
-<dialog><h2 id="dialogTitle"></h2><div id="estimate"><label for="gb">حجم موردنیاز (گیگابایت)</label><input id="gb" type="number" min="1" max="999999" value="10"><p id="total"></p></div><p id="details"></p><div class="row"><button class="primary" id="continue">ادامه در ربات</button><button id="dismiss">بستن</button></div></dialog>
-
-<script src="launch.js" defer></script>
-<script>
-document.addEventListener('DOMContentLoaded',async()=>{
-const auth=await window.nrTelegram();
-const $=s=>document.querySelector(s),tg=auth.sdk,live=!!auth.initData,n=new Intl.NumberFormat('fa-IR'),dlg=$('dialog');
-let data={name:'',volume:185,wallet:2450000,bot:'پنل نمایندگی',price:12000,services:[{customer:'127480',gb:20,delivered:true},{customer:'127479',gb:10,delivered:false},{customer:'127478',gb:35,delivered:true}]},filter='all',action='',ready=!live;
-function rows(target,items){target.replaceChildren();if(!items.length){target.textContent='هنوز سرویسی ثبت نکردی.';return}for(const s of items){const row=document.createElement('div');row.className='item';row.innerHTML='<div class="row start"><span class="icon">↗</span><div><strong></strong><small></small></div></div><span class="status"></span>';row.querySelector('strong').textContent=n.format(s.gb)+' گیگابایت';row.querySelector('small').textContent='مشتری '+s.customer;row.querySelector('.status').textContent=s.delivered?'● تحویل‌شده':'◷ در انتظار';target.append(row)}}
-function render(){ $('#volume').textContent=n.format(data.volume);$('#wallet').textContent=n.format(data.wallet)+' تومان';$('#bot').textContent=data.bot||'متصل نشده';$('#accountBot').textContent=data.bot||'پنل نمایندگی';$('#rate').textContent=data.price?'تعرفه هر گیگابایت '+n.format(data.price)+' تومان':'تعرفه هنوز تنظیم نشده است.';rows($('#recent'),data.services.slice(0,3));rows($('#list'),data.services.filter(s=>filter==='all'||s.delivered===(filter==='done')));document.querySelectorAll('[data-filter]').forEach(b=>b.classList.toggle('selected',b.dataset.filter===filter))}
-function tab(id){for(const key of ['home','services','account'])$('#'+key).hidden=key!==id;$('#heading').textContent={home:'داشبورد نمایندگی',services:'سرویس‌های مشتریان',account:'حساب نماینده'}[id];document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('selected',b.dataset.tab===id));if(live){if(id==='home')tg?.BackButton?.hide();else tg?.BackButton?.show()}window.scrollTo(0,0)}
-function estimate(){const count=Number($('#gb').value);$('#total').textContent=data.price&&Number.isInteger(count)&&count>0&&count<=999999?'برآورد هزینه: '+n.format(count*data.price)+' تومان':'برای برآورد، حجم و تعرفه معتبر لازم است.'}
-document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;if(b.dataset.tab)tab(b.dataset.tab);if(b.dataset.filter){filter=b.dataset.filter;render()}if(b.dataset.act&&ready){action=b.dataset.act;$('#dialogTitle').textContent=action==='buy'?'خرید حجم':'ساخت کانفیگ روی پنل مرکزی';$('#estimate').hidden=action!=='buy';$('#details').textContent=!live?'این صفحه با داده نمونه نمایش داده می‌شود.':action==='buy'?'حجم نهایی رو انتخاب کن و خریدت رو در چت ربات تأیید کن.':'حجم و مدت سرویس رو در ربات مشخص کن.';$('#continue').hidden=!live;estimate();dlg.showModal()}});$('#gb').oninput=estimate;$('#dismiss').onclick=()=>dlg.close();
-async function api(path,method='GET'){const r=await fetch('api/'+path,{method,headers:{Authorization:'tma '+auth.initData},cache:'no-store'});if(!r.ok)throw Error();return r.json()}
-$('#continue').onclick=async()=>{const b=$('#continue');b.disabled=true;try{await api('action/'+(action==='buy'&&!data.bot?'connect':action),'POST');tg?.close?.()}catch{$('#details').textContent='ارسال درخواست ناموفق بود. دوباره تلاش کنید.'}finally{b.disabled=false}};
-const cv=$('canvas'),ctx=cv.getContext('2d');cv.width=560;cv.height=450;ctx.strokeStyle='#4d773b';ctx.lineWidth=1.5;for(let i=0;i<75;i++){ctx.beginPath();for(let x=0;x<=560;x+=4){const y=155+i*3.5+Math.sin(x/104+i/21)*50+Math.cos(x/57-i/32)*22;(x?ctx.lineTo:ctx.moveTo).call(ctx,x,y)}ctx.stroke()}
-function colorInk(color) {
-  const rgb=color.slice(1).match(/../g).map(v=>parseInt(v,16)/255).map(v=>v<=.04045?v/12.92:((v+.055)/1.055)**2.4);
-  return rgb[0]*.2126+rgb[1]*.7152+rgb[2]*.0722>.179?'#14111d':'#fff';
-}
-async function loadColors(){
-  try {
-    const style=location.protocol==='file:'?JSON.parse(localStorage.getItem('nr-preview-theme')||'null'):await (await fetch('api/theme',{cache:'no-store'})).json();
-    if(!style)return;
-    const variables={primary:['--button-primary','--primary-ink'],secondary:['--button-secondary','--secondary-ink'],background:['--app-bg','--app-ink'],surface:['--app-surface','--card-ink']};
-    for(const [key,[fill,ink]] of Object.entries(variables)){
-      const color=style[key];
-      if(!/^#[0-9a-f]{6}$/i.test(color))continue;
-      document.documentElement.style.setProperty(fill,color);
-      document.documentElement.style.setProperty(ink,colorInk(color));
-    }
-    document.body.dataset.layout=style.layout||'tiles';
-    for(const [selector,key] of [['[data-act="buy"]','panel:buy'],['[data-act="connect"]','panel:issue'],['nav [data-tab="home"]','miniapp:home'],['nav [data-tab="services"]','miniapp:services'],['nav [data-tab="account"]','miniapp:account'],['#continue','miniapp:submit'],['#dismiss','miniapp:back']]){
-      const color=style.buttons?.[key]?.web;
-      if(!/^#[0-9a-f]{6}$/i.test(color))continue;
-      const button=$(selector);button.style.backgroundColor=color;button.style.color=colorInk(color);
-    }
-  }catch{}
-}
-loadColors();if(live){api('access').then(access=>{$('#adminEntry').hidden=!access.admin}).catch(()=>{})}else if(location.protocol==='file:'){$('#adminEntry').hidden=false;$('#shopEntry').href='admin.html?shop'}tab('home');if(live){tg?.BackButton?.onClick(()=>tab('home'));$('#mode').textContent='در حال دریافت اطلاعات…';try{data=await api('dashboard');ready=true;$('#hello').textContent='سلام، '+data.name;$('#mode').textContent='پنل نماینده';render()}catch{$('#mode').textContent='اتصال برقرار نشد';$('#notice').textContent='برای بارگذاری اطلاعات، اگر نمایندگی فعال است، پنل را از منوی ربات دوباره باز کن. فروشگاه مشتری از دکمهٔ بالا در دسترس است.';document.querySelectorAll('[data-act],[data-filter]').forEach(b=>b.disabled=true)}}else render()
-});
-</script></html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#101019">
+<title>پنل نمایندگی | NR SHOP</title>
+<link rel="stylesheet" href="agency.css">
+<script defer src="launch.js"></script>
+<script defer src="agency.js"></script>
+</head>
+<body>
+<header><div class="bar"><button id="menu" aria-label="باز کردن منوی نمایندگی" aria-controls="drawer">☰</button><b dir="ltr">NR<span>/</span>SHOP</b><small id="mode">پنل نمایندگی</small></div></header>
+<main>
+<p id="hello" class="eyebrow">پنل نمایندگی</p>
+<h1 id="heading">میز کار نماینده</h1>
+<p id="notice" role="status"></p>
+<section id="home">
+<div class="hero"><div class="rings" aria-hidden="true"></div><div class="hero-content"><p>حجم آمادهٔ تخصیص</p><strong id="volume">—</strong> <small>گیگابایت</small><div><button data-act="buy">＋ خرید حجم</button></div></div></div>
+<div class="cards"><article><small>موجودی کیف پول</small><strong id="wallet">—</strong></article><article><small>تعرفهٔ هر گیگابایت</small><strong id="rate">—</strong></article></div>
+<button class="issue" data-act="connect"><span>＋</span><div><b>ساخت کانفیگ</b><small>تخصیص حجم از سهمیهٔ نمایندگی</small></div><i>‹</i></button>
+<div class="section-title"><h2>سرویس‌های اخیر</h2><button data-tab="services">تاریخچه ‹</button></div><div class="panel" id="recent"></div>
+</section>
+<section id="services" hidden>
+<label for="search">جست‌وجو در سرویس‌های بارگذاری‌شده</label><input type="search" id="search" placeholder="شناسهٔ سرویس یا مشتری">
+<div class="filters"><button data-filter="all">همه</button><button data-filter="done">تحویل‌شده</button><button data-filter="wait">در انتظار</button></div>
+<div class="panel" id="list"></div><button id="more" hidden>نمایش سرویس‌های قدیمی‌تر</button>
+</section>
+<section id="account" hidden><div class="panel"><small>حساب نمایندگی</small><h2 id="accountBot">—</h2><p>کانفیگ‌ها روی پنل مرکزی ساخته می‌شوند. حجم هر کانفیگ از سهمیهٔ همین حساب کم می‌شود.</p></div></section>
+</main>
+<nav aria-label="دسترسی سریع"><button data-tab="home"><span>⌂</span>میز کار</button><button data-tab="services"><span>▤</span>سرویس‌ها</button><button data-tab="account"><span>◎</span>حساب من</button></nav>
+<dialog id="drawer"><div class="section-title"><h2>پنل نمایندگی</h2><button data-close aria-label="بستن منو">×</button></div><button data-tab="home">میز کار</button><button data-tab="services">سرویس‌های من</button><button data-tab="account">حساب نمایندگی</button><a id="shopEntry" href="shop.html">فروشگاه مشتری ‹</a><a hidden id="adminEntry" href="admin.html">مدیریت فروشگاه ‹</a></dialog>
+<dialog id="confirm"><h2 id="dialogTitle"></h2><div id="estimate"><label for="gb">برآورد هزینه بر اساس حجم (گیگابایت)</label><input id="gb" type="number" min="1" max="999999" value="10"><p id="total"></p></div><p id="details"></p><button id="continue">ادامه در ربات</button> <button data-close id="dismiss">بستن</button></dialog>
+</body></html>

@@ -1,0 +1,40 @@
+:root {
+  --accent:#e9c88e; --on-accent:#21160d; --secondary:#292838; --on-secondary:#fff;
+  --bg:#101019; --fg:#f6f3ef; --surface:#191927; --on-surface:#f4f1ec;
+  --line:color-mix(in srgb,var(--on-surface) 17%, transparent);
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.75 Tahoma,Arial,sans-serif}
+button,input,a{font:inherit}
+button,a{touch-action:manipulation}
+button{cursor:pointer;background:var(--secondary);color:var(--on-secondary);border:0;border-radius:13px;padding:9px 15px;min-height:44px}
+button:disabled{opacity:.6;cursor:wait}
+:focus-visible{outline:3px solid currentColor;outline-offset:2px}
+header{background:var(--bg);border-bottom:1px solid var(--line)}
+.bar,main{max-width:760px;margin:auto;padding-inline:clamp(16px,4vw,30px)}
+.bar,.section-title,nav,.item,.issue{display:flex;align-items:center;gap:12px}
+.bar{min-height:66px}.bar b{font:900 22px Arial;letter-spacing:-1.4px}.bar b span,.eyebrow{color:var(--accent)}.bar small,.issue i{margin-inline-start:auto}
+main{padding-top:24px;padding-bottom:calc(116px + env(safe-area-inset-bottom))}
+h1,h2,p{margin:0}h1{font-size:clamp(28px,6vw,42px);margin-bottom:20px}h2{font-size:19px}
+#notice:not(:empty){margin:12px 0;padding:12px;border:1px solid var(--line);border-radius:12px}
+.hero{position:relative;overflow:hidden;isolation:isolate;background:var(--accent);color:var(--on-accent);border-radius:26px;padding:clamp(20px,5vw,35px)}
+.hero-content{position:relative;width:fit-content}.hero strong{font-size:clamp(44px,8vw,66px);line-height:1.5}
+.rings{position:absolute;direction:ltr;left:-11%;top:-58%;width:56%;height:220%;transform:rotate(-27deg);border-radius:50%;opacity:.32;background:repeating-radial-gradient(ellipse at center,transparent 0 8px,currentColor 9px 10px,transparent 11px 15px);mask-image:linear-gradient(90deg,black 60%,transparent)}
+.cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:14px 0}
+article,.panel,.issue,dialog{background:var(--surface);color:var(--on-surface);border:1px solid var(--line);border-radius:18px;padding:16px}
+article strong,.issue small,.item small{display:block}article strong{margin-top:6px;font-size:clamp(16px,4vw,23px)}small,label{font-size:13px}
+.issue{width:100%;text-align:start}.issue span{display:grid;place-items:center;background:var(--accent);color:var(--on-accent);width:46px;height:46px;border-radius:14px;font-size:22px}.issue b{font-size:17px}.issue i{font:24px Arial}
+.section-title{justify-content:space-between;margin:24px 0 10px}.section-title button{background:none;color:inherit}
+.item{justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--line)}.item:last-child{border:0}.item small{opacity:.78}.status{font-size:12px}
+nav{position:fixed;z-index:2;bottom:max(10px,env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);width:min(450px,92%);padding:5px;gap:3px;background:var(--surface);color:var(--on-surface);border:1px solid var(--line);border-radius:19px;box-shadow:0 8px 24px #0005}
+nav button,.filters button{background:transparent;color:inherit}nav button{flex:1;font-size:13px;padding:5px}nav span{display:block;font:20px/1.3 Arial}
+[aria-current="page"],[aria-pressed="true"],#continue{background:var(--accent);color:var(--on-accent)}
+nav [aria-current="page"]{box-shadow:inset 0 -3px currentColor}
+.filters{display:flex;gap:4px;margin:12px 0}.filters button{padding-inline:12px}.filters [aria-pressed=true]{background:var(--secondary);color:var(--on-secondary)}
+input{width:100%;margin-top:6px;padding:11px;border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--on-surface)}
+#more{margin-top:12px}dialog{width:min(420px,92%);box-shadow:0 16px 50px #0006}dialog::backdrop{background:#080810aa}dialog p{margin:14px 0}
+#drawer{position:fixed;inset:0 0 0 auto;margin:0;height:100dvh;max-height:100dvh;width:min(315px,86vw);border-radius:20px 0 0 20px;padding:20px}
+#drawer .section-title{margin-top:0}#drawer>button,#drawer a{display:block;text-align:start;width:100%;margin:8px 0;padding:10px 14px}#drawer a{color:inherit}
+body[data-layout=list] .cards,body[data-layout=feature] .cards{grid-template-columns:1fr}body[data-layout=compact] article{padding:10px}

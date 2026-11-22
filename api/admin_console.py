@@ -305,7 +305,7 @@ def install(app,identity):
         return web.json_response({"url":f"https://t.me/{profile.username}"},headers={"Cache-Control":"public,max-age=300"})
 
     app.cleanup_ctx.append(lifecycle)
-    app.router.add_get(r"/{file:studio\.css|studio\.js|launch\.js}",assets)
+    app.router.add_get(r"/{file:studio\.css|studio\.js|launch\.js|agency\.css|agency\.js}",assets)
     app.router.add_get("/admin.html",page)
     app.router.add_get("/shop.html",page)
     app.router.add_get("/api/{mode:shop}/screen",screen)
