@@ -30,6 +30,9 @@ jobs:
           for page in ('/', '/shop.html', '/admin.html'):
               with urlopen('http://127.0.0.1:8080' + page, timeout=5) as response:
                   assert response.status == 200 and b'NR SHOP' in response.read()
+          for asset, marker in (('/studio.css', b'.action-grid'), ('/studio.js', b'TELEGRAM_COLORS')):
+              with urlopen('http://127.0.0.1:8080' + asset, timeout=5) as response:
+                  assert response.status == 200 and marker in response.read()
           PY
           for service in postgres miniapp; do
             container=$(docker compose -f compose.production.yaml ps -q "$service")

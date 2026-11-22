@@ -1,4 +1,5 @@
 import os
+from core.button_theme import layout_keyboard
 from urllib.parse import urljoin
 from aiogram.types import (
     WebAppInfo,
@@ -63,7 +64,7 @@ def main_menu_keyboard():
         ])
 
     return InlineKeyboardMarkup(
-        inline_keyboard=buttons
+        inline_keyboard=layout_keyboard(buttons,pack_tiles=True)
     )
 
 

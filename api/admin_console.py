@@ -15,7 +15,7 @@ from aiogram import Bot, Dispatcher
 from aiogram.client.session.aiohttp import AiohttpSession
 from aiogram.types import BufferedInputFile, Message, MessageId, Update, User
 
-from core.button_theme import theme, save_theme
+from core.button_theme import button_key, theme, save_theme, storefront_theme
 from core.config import settings
 from core.loader import register_routers
 from modules.admin.keyboards import admin_dashboard_keyboard
@@ -49,6 +49,7 @@ class Screen:
         self.reset()
 
     def reset(self):
+        self.is_home=True
         self.caption="مدیریت فروشگاه" if self.mode=="admin" else "به NR SHOP خوش اومدی. سرویس‌ت رو انتخاب کن یا سفارش‌هات رو پیگیری کن."
         self.markup=admin_dashboard_keyboard() if self.mode=="admin" else main_menu_keyboard()
         self.media.clear()
@@ -66,9 +67,9 @@ class Screen:
                 action=button.callback_data
                 url=button.url
                 if action and (self.mode=="admin" and action!="shop:home" or self.mode=="shop" and not action.startswith(("admin:","vpnadmin:","support:admin:","updates:"))):
-                    items.append({"text":button.text,"action":action})
+                    items.append({"text":button.text,"action":action,"key":button_key(button)})
                 elif url and url.startswith("https://"):
-                    items.append({"text":button.text,"url":url})
+                    items.append({"text":button.text,"url":url,"key":button_key(button)})
             if items:
                 rows.append(items)
         return rows
@@ -91,6 +92,7 @@ async def present(make_request,bot,method):
     if name=="deleteMessage":
         return True
     if name!="editMessageReplyMarkup":
+        view.is_home=False
         view.caption=plain(getattr(method,"text",None) or getattr(method,"caption",None))
         view.file=None
     view.markup=getattr(method,"reply_markup",None)
@@ -127,9 +129,9 @@ def install(app,identity):
     async def payload(dp,bot,screen):
         state=dp.fsm.get_context(bot=bot,chat_id=screen.uid,user_id=screen.uid)
         step=await state.get_state()
-        return web.json_response(dict(caption=screen.caption,rows=screen.rows(),notice=screen.notice,media=screen.file,
+        return web.json_response(dict(caption=screen.caption,is_home=screen.is_home,rows=screen.rows(),notice=screen.notice,media=screen.file,
             revision=screen.revision,input=bool(step),password="password" in str(step).lower(),
-            upload=step in UPLOAD_STATES,theme=theme()),headers={"Cache-Control":"no-store"})
+            upload=step in UPLOAD_STATES,theme=theme() if screen.mode=="admin" else storefront_theme()),headers={"Cache-Control":"no-store"})
 
     async def access(request):
         user=await identity(request)
@@ -254,10 +256,15 @@ def install(app,identity):
     async def page(request):
         return web.FileResponse(Path(__file__).resolve().parents[1]/"miniapp"/"admin.html")
 
+    async def assets(request):
+        file=request.match_info["file"]
+        return web.FileResponse(Path(__file__).resolve().parents[1]/"miniapp"/file)
+
     async def public_theme(request):
-        return web.json_response(theme(),headers={"Cache-Control":"no-store"})
+        return web.json_response(storefront_theme(),headers={"Cache-Control":"no-store"})
 
     app.cleanup_ctx.append(lifecycle)
+    app.router.add_get(r"/{file:studio\.css|studio\.js}",assets)
     app.router.add_get("/admin.html",page)
     app.router.add_get("/shop.html",page)
     app.router.add_get("/api/{mode:shop}/screen",screen)

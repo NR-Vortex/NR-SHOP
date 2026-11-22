@@ -1,4 +1,5 @@
 import os
+from core.button_theme import layout_keyboard
 from urllib.parse import urljoin
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
 
@@ -36,6 +37,7 @@ def admin_dashboard_keyboard():
         (("⚙️ تنظیمات و نگهداری", "admin:hub:system"),),
         (("↩️ بازگشت به فروشگاه", "shop:home"),),
     ])
+    keyboard = layout_keyboard(keyboard)
     url = os.getenv("MINIAPP_URL","").strip()
     if url.startswith("https://"):
         keyboard.insert(0,[InlineKeyboardButton(text="🖥 باز کردن مینی‌اپ مدیریت",web_app=WebAppInfo(url=urljoin(url,"admin.html")))])
@@ -44,7 +46,7 @@ def admin_dashboard_keyboard():
 
 def admin_group_keyboard(group):
     _, rows = ADMIN_GROUPS[group]
-    return InlineKeyboardMarkup(inline_keyboard=admin_buttons([*rows, (("↩️ داشبورد مدیریت", "admin:dashboard"),)]))
+    return InlineKeyboardMarkup(inline_keyboard=layout_keyboard(admin_buttons([*rows, (("↩️ داشبورد مدیریت", "admin:dashboard"),)])))
 
 
 def admin_users_keyboard():
@@ -107,6 +109,11 @@ def admin_settings_keyboard():
         rows.append([InlineKeyboardButton(text=f"{label} — {status}", callback_data=f"admin:settings:feature:{key}")])
     rows.append([InlineKeyboardButton(text="سرور فروش نمایندگی", callback_data="admin:agency:server")])
     rows.append([InlineKeyboardButton(text="تعرفه حجم نمایندگی", callback_data="admin:agency:price")])
+    url = os.getenv("MINIAPP_URL","").strip()
+    if url.startswith("https://"):
+        rows.append([InlineKeyboardButton(text="🎨 چیدمان و رنگ دکمه‌ها",
+            web_app=WebAppInfo(url=urljoin(url,"admin.html?view=appearance")))])
+
     rows.append([InlineKeyboardButton(text="بازگشت", callback_data="admin:dashboard")])
     return InlineKeyboardMarkup(inline_keyboard=rows)
 

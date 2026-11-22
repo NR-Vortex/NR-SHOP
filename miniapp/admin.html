@@ -1,29 +1,85 @@
-<!doctype html><html lang="fa" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><title>مدیریت NR SHOP</title>
-<style>
-:root{--primary:#c7ef7c;--secondary:#323f2d;--ptext:#142215;--stext:#fff;color-scheme:dark}*{box-sizing:border-box}body{margin:0;background:#101511;color:#edf2e8;font:15px/1.8 Tahoma,Arial,sans-serif}main{max-width:790px;margin:auto;padding:20px 18px 90px}header,.bar,.presets{display:flex;align-items:center;gap:12px}header{justify-content:space-between;border-bottom:1px solid #344036;padding-bottom:15px}header strong{font:900 22px Arial;letter-spacing:-1px}header i{color:var(--primary)}header span,small{color:#b5c5b4}.bar{margin:18px 0;flex-wrap:wrap}h1{font-size:clamp(23px,5vw,34px);margin:20px 0}h2{font-size:18px}button,a.btn{font:inherit;font-weight:bold;cursor:pointer;border:0;border-radius:12px;background:var(--secondary);color:var(--stext);padding:10px 15px;text-decoration:none}.primary{background:var(--primary);color:var(--ptext)}button:disabled{opacity:.6;cursor:wait}button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline:3px solid #87bdff;outline-offset:2px}.surface{background:#1b231d;border:1px solid #354138;border-radius:20px;padding:18px}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.grid button{text-align:right;overflow-wrap:anywhere;min-height:48px}.body{white-space:pre-wrap;overflow-wrap:anywhere;margin:0 0 16px}textarea,input,select{font:inherit;border:1px solid #59685a;background:#111913;color:white;border-radius:9px;padding:8px;width:100%}label{display:block;margin:12px 0 5px}input[type=color]{height:48px}.pair{display:grid;grid-template-columns:1fr 1fr;gap:14px}.presets{flex-wrap:wrap}.presets button{height:34px;width:34px;border:2px solid #a8aea5;border-radius:50%;padding:0}.note{color:#d8edab;white-space:pre-line}img{max-width:100%;max-height:55vh}button[aria-pressed=true]{box-shadow:inset 0 -3px var(--primary)}[hidden]{display:none!important}@media(max-width:350px){.grid,.pair{grid-template-columns:1fr}}
-</style></head><body><main><header><span id="session">پنل ادمین</span><strong dir="ltr">NR<i>/</i>SHOP</strong></header>
-<div class="bar"><button id="home">مدیریت فروشگاه</button><button id="palette">رنگ دکمه‌ها</button></div>
-<h1 id="title">مدیریت فروشگاه</h1><section id="operations" class="surface"><p id="caption" class="body"></p><div id="media"></div><div id="buttons" class="grid"></div>
-<form id="form" hidden><label for="value">متن یا مقدار</label><textarea id="value" rows="3"></textarea><input id="secret" type="password" hidden autocomplete="new-password" aria-label="رمز پنل"><input id="upload" type="file" accept="image/jpeg,image/png,application/pdf" hidden aria-label="پیوست پاسخ"><div class="bar"><button class="primary">ارسال</button><button type="button" id="cancelForm">لغو فرم</button></div></form></section>
-<section id="appearance" class="surface" hidden><h2>ظاهر مینی‌اپ</h2><div class="pair"><label>دکمه اصلی<input id="primary" type="color"></label><label>دکمه‌های منو<input id="secondary" type="color"></label></div><p>پالت‌های آماده</p><div class="presets" id="presets"></div><h2>دکمه‌های داخل چت تلگرام</h2><select id="native" aria-label="رنگ دکمه تلگرام"><option value="default">پیش‌فرض تلگرام</option><option value="primary">آبی</option><option value="success">سبز</option><option value="danger">قرمز</option></select><div class="bar"><button class="primary" id="save">ذخیره رنگ‌ها</button><button id="reset">بازگرداندن رنگ اولیه</button></div></section><p id="notice" class="note" role="status"></p></main>
-<script>
-const $=id=>document.getElementById(id),defaults={primary:'#c7ef7c',secondary:'#323f2d',native:'default'};
-const shop=location.pathname.endsWith('/shop.html')||new URLSearchParams(location.search).has('shop'), section=shop?'shop':'admin';
-const heading=shop?'فروشگاه NR SHOP':'مدیریت فروشگاه';
-let tg,screen,busy=false,saved=defaults,blob,preview=location.protocol==='file:';
-if(shop){$('home').textContent='خانه فروشگاه';$('palette').hidden=true;document.title=heading}
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#101019">
+<title>NR SHOP</title>
+<link rel="stylesheet" href="studio.css">
+<script src="studio.js" defer></script>
+</head>
+<body>
+<main>
+  <header class="masthead">
+    <a class="brand" href="./" aria-label="پنل نمایندگی"><span class="brand-mark">N</span><strong dir="ltr">NR SHOP</strong></a>
+    <span id="session">مدیریت</span>
+  </header>
+  <section id="intro" class="intro">
+    <div class="intro-art" aria-hidden="true"><i></i><i></i><i></i></div>
+    <p id="eyebrow">NR SHOP / ADMIN</p>
+    <h1 id="title">داشبورد مدیریت</h1>
+    <p id="summary">فروش، مشتری‌ها و نمایندگی را از همین‌جا مدیریت کن.</p>
+  </section>
+  <section id="operations" aria-labelledby="sectionTitle">
+    <div class="section-head"><h2 id="sectionTitle">دسترسی سریع</h2><button id="shortcut" type="button" class="text-button">تنظیم چیدمان</button></div>
+    <div id="screenCard" class="surface screen">
+      <p id="caption" class="body" hidden></p>
+      <div id="media"></div>
+      <div id="buttons" class="action-grid"></div>
+      <form id="form" hidden>
+        <label for="value">متن یا مقدار</label>
+        <textarea id="value" rows="3"></textarea>
+        <input id="secret" type="password" hidden autocomplete="new-password" aria-label="رمز پنل">
+        <input id="upload" type="file" accept="image/jpeg,image/png,application/pdf" hidden aria-label="فایل یا عکس">
+        <div class="bar"><button class="primary">ارسال</button><button type="button" id="cancelForm">لغو فرم</button></div>
+      </form>
+    </div>
+  </section>
 
-function contrast(hex){const rgb=hex.slice(1).match(/../g).map(x=>parseInt(x,16)/255).map(x=>x<=.04045?x/12.92:((x+.055)/1.055)**2.4);return .2126*rgb[0]+.7152*rgb[1]+.0722*rgb[2]>.179?'#101510':'#fff'}
-function apply(t){for(const [k,c] of [['primary','ptext'],['secondary','stext']]){document.documentElement.style.setProperty('--'+k,t[k]);document.documentElement.style.setProperty('--'+c,contrast(t[k]));$(k).value=t[k]}$('native').value=t.native}
-function chosen(){return {primary:$('primary').value,secondary:$('secondary').value,native:$('native').value}}
-for(const k of ['primary','secondary'])$(k).oninput=()=>apply(chosen());
-for(const [label,p,s] of [['زیتونی','#c7ef7c','#323f2d'],['آبی','#83b9ff','#263954'],['بنفش','#c2a2ff','#423452'],['کهربایی','#ffc475','#513c27']]){const b=document.createElement('button');b.ariaLabel=label;b.title=label;b.style.background=p;b.onclick=()=>apply({...chosen(),primary:p,secondary:s});$('presets').append(b)}
-async function request(url,opts={}){const res=await fetch(url,{...opts,headers:{Authorization:'tma '+tg.initData,...opts.headers},cache:'no-store'});if(!res.ok)throw Error(res.status===403?'دسترسی این بخش فقط برای مدیر است.':res.status===401?'از منوی ربات دوباره وارد شوید.':res.status===409?'صفحه تغییر کرده است. دوباره انتخاب کنید.':'عملیات کامل نشد. وضعیت رو بررسی کن.');return res}
-function themeTab(on){$('operations').hidden=on;$('appearance').hidden=!on;$('title').textContent=on?'رنگ دکمه‌ها':heading;$('notice').textContent='';$('palette').setAttribute('aria-pressed',on);$('home').setAttribute('aria-pressed',!on)}
-async function render(v){screen=v;themeTab(false);$('caption').textContent=v.caption;$('notice').textContent=v.notice||'';$('buttons').replaceChildren();for(const row of v.rows)for(const item of row){const b=document.createElement('button');b.textContent=item.text;b.onclick=()=>{if(item.url){if(tg)tg.openLink(item.url);else window.open(item.url,'_blank','noopener')}else eventToServer(item.action)};$('buttons').append(b)}$('form').hidden=!v.input;$('value').hidden=!!v.password;$('secret').hidden=!v.password;$('upload').hidden=!v.upload;$('upload').value='';$('value').value='';$('secret').value='';$('media').replaceChildren();if(blob)URL.revokeObjectURL(blob);if(v.media){blob=URL.createObjectURL(await (await request('api/'+section+'/media/'+v.media.key)).blob());const node=document.createElement(v.media.photo?'img':'a');if(v.media.photo){node.src=blob;node.alt='تصویر پیوست'}else{node.href=blob;node.download='receipt';node.textContent='دریافت فایل رسید';node.className='btn'}$('media').append(node)}}
-async function refresh(){await render(await (await request('api/'+section+'/screen')).json())}
-async function eventToServer(action){if(busy)return;if(preview){$('notice').textContent=shop?'خرید با ورود از ربات تلگرام فعال می‌شود.':'مدیریت با ورود ادمین از تلگرام فعال می‌شود.';return}busy=true;try{const body=new FormData();body.set('revision',screen.revision);body.set('action',action);if(action==='input'||action==='cancel'){body.set('action','input');body.set('value',action==='cancel'?'/cancel':screen.password?$('secret').value:$('value').value);if(action==='input'&&$('upload').files[0])body.set('file',$('upload').files[0])}await render(await (await request('api/'+section+'/event',{method:'POST',body})).json())}catch(e){try{await refresh()}catch{}$('notice').textContent=e.message}finally{busy=false}}
-$('cancelForm').onclick=()=>eventToServer('home');$('form').onsubmit=e=>{e.preventDefault();eventToServer('input')};$('palette').onclick=()=>{apply(saved);themeTab(true)};$('home').onclick=()=>{themeTab(false);apply(saved);if(!preview&&screen)eventToServer('home')};$('reset').onclick=()=>apply(defaults);
-$('save').onclick=async()=>{try{const t=chosen();if(preview){localStorage.setItem('nr-preview-theme',JSON.stringify(t))}else{await request('api/admin/theme',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(t)})}saved=t;$('notice').textContent=preview?'رنگ پیش‌نمایش ذخیره شد.':'تم جدید ذخیره شد.'}catch(e){$('notice').textContent=e.message}};
-(async()=>{try{if(preview){saved=JSON.parse(localStorage.getItem('nr-preview-theme')||'null')||defaults;$('session').textContent='پیش‌نمایش';const labels=shop?['خرید VPN','اشتراک هوش مصنوعی','محصولات من','پشتیبانی']:['💳 رسیدهای پرداخت','📊 گزارش فروش','👥 کاربران','🎧 پشتیبانی','💰 امور مالی','🛍 کاتالوگ و فروش','🏢 نمایندگی','📣 محتوا و ارتباطات','⚙️ تنظیمات و نگهداری'];await render({caption:'برای شروع یکی از بخش‌ها رو انتخاب کن.',rows:[labels.map(text=>({text}))]})}else{await new Promise((ok,fail)=>{const sdk=document.createElement('script');sdk.src='https://telegram.org/js/telegram-web-app.js';sdk.onload=ok;sdk.onerror=()=>fail(Error('اتصال به تلگرام برقرار نشد.'));document.head.append(sdk)});tg=window.Telegram.WebApp;tg.ready();tg.expand();if(!tg.initData)throw Error('از منوی ربات وارد شوید.');await refresh();$('session').textContent=shop?'فروشگاه مشتری':'پنل ادمین';saved=screen.theme;tg.BackButton.show();tg.BackButton.onClick(()=>$('home').click())}apply(saved)}catch(e){$('notice').textContent=e.message;$('palette').disabled=true}})();
-</script></body></html>
+  <section id="appearance" hidden aria-label="تنظیمات ظاهر">
+    <div class="surface setting">
+      <div class="section-head"><h2>مدل چیدمان</h2></div>
+      <label for="layout">چیدمان مینی‌اپ</label>
+      <select id="layout"></select>
+      <label for="chat_layout">چیدمان دکمه‌های منوی ربات در تلگرام</label>
+      <select id="chat_layout"></select>
+      <div class="preview-label">پیش‌نمایش مینی‌اپ</div>
+      <div id="layoutPreview" class="action-grid layout-preview"></div>
+      <div class="preview-label">پیش‌نمایش چیدمان ربات</div>
+      <div id="chatPreview" class="action-grid layout-preview"></div>
+    </div>
+    <div class="surface setting">
+      <h2>تم مینی‌اپ</h2>
+      <div id="presets" class="presets"></div>
+      <div class="pair">
+        <label>دکمهٔ اصلی<input id="primary" type="color"></label>
+        <label>دکمه‌های منو<input id="secondary" type="color"></label>
+        <label>پس‌زمینه<input id="background" type="color"></label>
+        <label>کارت‌ها و فرم‌ها<input id="surface" type="color"></label>
+      </div>
+      <label for="native">رنگ پیش‌فرض دکمه‌ها در چت تلگرام</label>
+      <select id="native"></select>
+    </div>
+    <div class="surface setting">
+      <h2>رنگ هر دکمه</h2>
+      <p class="muted">دکمه را از فهرست انتخاب کن. با باز کردن بخش‌های دیگر، دکمه‌های آن بخش هم به فهرست اضافه می‌شوند.</p>
+      <label for="buttonSearch">جستجوی دکمه</label>
+      <input id="buttonSearch" type="search" placeholder="مثلاً گزارش فروش">
+      <label for="targetButton">انتخاب دکمه</label>
+      <select id="targetButton"></select>
+      <div class="pair">
+        <label>رنگ مینی‌اپ<input id="buttonColor" type="color"></label>
+        <label>رنگ چت تلگرام<select id="buttonNative"></select></label>
+      </div>
+      <div class="bar"><button id="buttonPreview" type="button">پیش‌نمایش دکمه</button><button id="clearButton" type="button" class="text-button">بازگشت به رنگ عمومی</button></div>
+    </div>
+    <div class="savebar"><button class="primary" id="save">ذخیرهٔ تنظیمات</button><button id="reset">تم اولیه</button></div>
+  </section>
+  <p id="notice" class="notice" role="status"></p>
+</main>
+<nav aria-label="منوی اصلی" id="dock">
+  <button id="home" aria-current="page"><span aria-hidden="true">⌂</span> داشبورد</button>
+  <button id="palette"><span aria-hidden="true">◈</span> ظاهر و چیدمان</button>
+</nav>
+</body>
+</html>
